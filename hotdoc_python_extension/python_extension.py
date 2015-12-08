@@ -1,15 +1,13 @@
 import os, ast, glob
 from hotdoc.core.base_extension import BaseExtension
-from hotdoc.utils.loggable import Loggable, progress_bar
 from hotdoc.core.symbols import *
 from hotdoc.extensions.python_doc_parser import google_doc_to_native
 from hotdoc.core.doc_tool import HotdocWizard
 from hotdoc.core.wizard import QuickStartWizard
 from hotdoc.core.comment_block import comment_from_tag
 
-class PythonScanner(Loggable):
+class PythonScanner(object):
     def __init__(self, doc_tool, sources):
-        Loggable.__init__(self)
         self.doc_tool = doc_tool
 
         self.__node_parsers = {
