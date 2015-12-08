@@ -3,7 +3,7 @@ from hotdoc.core.base_extension import BaseExtension
 from hotdoc.core.symbols import *
 from hotdoc.extensions.python_doc_parser import google_doc_to_native
 from hotdoc.core.doc_tool import HotdocWizard
-from hotdoc.core.wizard import QuickStartWizard
+from hotdoc.utils.wizard import QuickStartWizard
 from hotdoc.core.comment_block import comment_from_tag
 
 class PythonScanner(object):
