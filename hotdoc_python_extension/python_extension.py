@@ -1,10 +1,11 @@
 import os, ast, glob
 from hotdoc.core.base_extension import BaseExtension
 from hotdoc.core.symbols import *
-from hotdoc.extensions.python_doc_parser import google_doc_to_native
 from hotdoc.core.doc_tool import HotdocWizard
 from hotdoc.utils.wizard import QuickStartWizard
 from hotdoc.core.comment_block import comment_from_tag
+
+from .python_doc_parser import google_doc_to_native
 
 class PythonScanner(object):
     def __init__(self, doc_tool, sources):
