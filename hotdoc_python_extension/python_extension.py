@@ -5,7 +5,7 @@ from hotdoc.core.doc_tool import HotdocWizard
 from hotdoc.utils.wizard import QuickStartWizard
 from hotdoc.core.comment_block import comment_from_tag
 
-from .python_doc_parser import google_doc_to_native
+from .python_doc_parser import google_doc_to_native, MyRestParser
 
 class PythonScanner(object):
     def __init__(self, doc_tool, sources):
@@ -155,6 +155,7 @@ class PythonExtension(BaseExtension):
 
     def __init__(self, doc_tool, config):
         BaseExtension.__init__(self, doc_tool, config)
+        self._doc_parser = MyRestParser(doc_tool)
         self.sources = source_files_from_config(config, doc_tool)
         self.python_index = config.get('python_index')
         doc_tool.doc_tree.page_parser.register_well_known_name('python-api',
