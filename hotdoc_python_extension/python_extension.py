@@ -2,6 +2,7 @@ import os, ast, glob
 from hotdoc.core.base_extension import BaseExtension
 from hotdoc.core.symbols import *
 from hotdoc.core.doc_tool import HotdocWizard
+from hotdoc.core.doc_tree import Page
 from hotdoc.utils.wizard import QuickStartWizard
 from hotdoc.core.comment_block import comment_from_tag
 
@@ -9,7 +10,7 @@ from .python_doc_parser import google_doc_to_native, MyRestParser
 from .python_html_formatter import PythonHtmlFormatter
 
 class PythonScanner(object):
-    def __init__(self, doc_tool, sources):
+    def __init__(self, doc_tool, extension, sources):
         self.doc_tool = doc_tool
 
         self.class_nesting = 0
@@ -20,6 +21,8 @@ class PythonScanner(object):
                     ast.ClassDef: self.__parse_class,
                     ast.FunctionDef: self.__parse_function,
                 }
+
+        self.__extension = extension
 
         for source in sources:
             self.__current_filename = source
@@ -87,10 +90,15 @@ class PythonScanner(object):
     def __parse_class (self, klass, parent_name):
         self.class_nesting += 1
         klass_name = '.'.join((parent_name, klass.name))
-        comment = google_doc_to_native(ast.get_docstring (klass)) 
-        comment.filename = self.__current_filename
-        class_symbol = self.doc_tool.get_or_create_symbol(ClassSymbol,
+        docstring = ast.get_docstring(klass)
+        comment = google_doc_to_native(docstring)
+
+        if comment:
+            comment.filename = self.__current_filename
+
+        class_symbol = self.__extension.get_or_create_symbol(ClassSymbol,
                 comment=comment,
+                filename=self.__current_filename,
                 display_name=klass_name)
 
         for node in klass.body:
@@ -132,11 +140,12 @@ class PythonScanner(object):
         if is_method:
             parameters = parameters[1:]
 
-        func_symbol = self.doc_tool.get_or_create_symbol(FunctionSymbol,
+        func_symbol = self.__extension.get_or_create_symbol(FunctionSymbol,
                 parameters=parameters,
                 return_value=retval,
                 comment=comment,
                 is_method = is_method,
+                filename=self.__current_filename,
                 display_name=func_name)
 
     def __parse_parameters(self, args, comment):
@@ -236,15 +245,31 @@ class PythonExtension(BaseExtension):
         self._formatters['html'] = PythonHtmlFormatter(self.doc_tool, self)
 
     def setup(self):
-        if not self.sources:
+        if not self.stale_source_files:
             return
 
-        self.scanner = PythonScanner (self.doc_tool, self.stale_source_files)
+        self.scanner = PythonScanner (self.doc_tool, self,
+                self.stale_source_files)
+
+        if not self.python_index:
+            index_path = self.create_naive_index()
+            old_prefix = self.doc_tool.doc_tree.page_parser.prefix
+            self.doc_tool.doc_tree.page_parser.prefix = os.path.dirname(index_path)
+            new_page = self.doc_tool.doc_tree.build_tree(index_path,
+                    'python-extension')
+            self.doc_tool.doc_tree.page_parser.prefix = old_prefix
+            self.doc_tool.doc_tree.pages['python-extension-index.markdown'] = new_page
 
     def get_source_files(self):
         return self.sources
 
     def python_index_handler (self, doc_tree):
+        if not self.python_index:
+            new_page = Page('python-extension-index')
+            doc_tree.pages['python-extension-index.markdown'] = new_page
+            doc_tree.page_parser.parse_contents(new_page, '')
+            return 'python-extension-index.markdown'
+
         index_path = os.path.join(doc_tree.prefix, self.python_index)
         index_path = self.doc_tool.resolve_config_path(index_path)
         new_page = doc_tree.build_tree(index_path, 'python-extension')

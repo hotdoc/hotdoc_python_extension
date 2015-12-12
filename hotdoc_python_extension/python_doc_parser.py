@@ -56,6 +56,9 @@ class MyGoogleDocString(docstring.GoogleDocstring):
 config = Config(napoleon_use_param=True, napoleon_use_rtype=True)
 
 def google_doc_to_native(doc):
+    if not doc:
+        return None
+
     docstring = MyGoogleDocString(doc, config)
     comment = Comment(description=docstring.__unicode__(),
             raw_comment=doc)
