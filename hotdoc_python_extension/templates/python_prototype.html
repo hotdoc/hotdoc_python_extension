@@ -1,0 +1,15 @@
+@require(function_name, parameters, comment, throws, is_method)
+<pre class="programlisting">
+@function_name\
+ (\
+@if parameters:
+\
+@for i, parameter in enumerate (parameters):
+@if i != 0:
+, \
+@end
+@parameter.argname\
+@end
+\
+@end
+)</pre>

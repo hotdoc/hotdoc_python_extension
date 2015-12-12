@@ -9,10 +9,45 @@ from docutils.statemachine import ViewList
 from docutils.writers.html4css1 import Writer as HtmlWriter
 from docutils.parsers.rst import roles, directives
 
+_google_typed_arg_regex = re.compile(r'\s*(.+?)\s*\(\s*(.+?)\s*\)')
+
 class MyGoogleDocString(docstring.GoogleDocstring):
     def __init__(self, *args, **kwargs):
         self.param_fields = []
         docstring.GoogleDocstring.__init__(self, *args, **kwargs)
+
+    def _consume_field(self, parse_type=True, prefer_type=False):
+        line = next(self._line_iter)
+
+        before, colon, after = self._partition_field_on_colon(line)
+        _name, _type, _desc = before, '', after
+
+        if parse_type:
+            # Original style, not seen anywhere
+            match = _google_typed_arg_regex.match(before)
+            if match:
+                _name = match.group(1)
+                _type = match.group(2)
+
+        if _name[:2] == '**':
+            _name = r'\*\*'+_name[2:]
+        elif _name[:1] == '*':
+            _name = r'\*'+_name[1:]
+
+        if prefer_type and not _type:
+            _type, _name = _name, _type
+        indent = self._get_indent(line) + 1
+
+        if parse_type and not _type:
+            split = _desc.split(',', 1)
+            if len(split) == 2 and len(split[0].strip().split(' ')) == 1:
+                _type = split[0].strip()
+                _desc = split[1].lstrip()
+
+        _desc = [_desc] + self._dedent(self._consume_indented_block(indent))
+        _desc = self.__class__(_desc, self._config).lines()
+
+        return _name, _type, _desc
 
     def _parse_parameters_section(self, section):
         self.param_fields.extend(self._consume_fields())
@@ -26,8 +61,13 @@ def google_doc_to_native(doc):
             raw_comment=doc)
 
     for field in docstring.param_fields:
+        tags = {}
+        if field[1]:
+            tags['type'] = field[1]
+
         param_comment = Comment(name=field[0],
-                description='\n'.join(field[2]))
+                description='\n'.join(field[2]),
+                tags=tags)
         comment.params[field[0]] = param_comment
 
     return comment
@@ -122,7 +162,23 @@ def codeitem_directive(dirname, arguments, options, content,
 
 codeitem_directive.arguments = (1, 0, True)
 codeitem_directive.content = True
-directives.register_directive ('attribute', codeitem_directive)
+directives.register_directive('attribute', codeitem_directive)
+directives.register_directive('moduleauthor', codeitem_directive)
+directives.register_directive('cfunction', codeitem_directive)
+directives.register_directive('cmember', codeitem_directive)
+directives.register_directive('cmacro', codeitem_directive)
+directives.register_directive('ctype', codeitem_directive)
+directives.register_directive('cvar', codeitem_directive)
+directives.register_directive('data', codeitem_directive)
+directives.register_directive('exception', codeitem_directive)
+directives.register_directive('function', codeitem_directive)
+directives.register_directive('class', codeitem_directive)
+directives.register_directive('const', codeitem_directive)
+directives.register_directive('method', codeitem_directive)
+directives.register_directive('staticmethod', codeitem_directive)
+directives.register_directive('opcode', codeitem_directive)
+directives.register_directive('cmdoption', codeitem_directive)
+directives.register_directive('envvar', codeitem_directive)
 
 # This I think I understand, can't promise
 

@@ -6,10 +6,15 @@ from hotdoc.utils.wizard import QuickStartWizard
 from hotdoc.core.comment_block import comment_from_tag
 
 from .python_doc_parser import google_doc_to_native, MyRestParser
+from .python_html_formatter import PythonHtmlFormatter
 
 class PythonScanner(object):
     def __init__(self, doc_tool, sources):
         self.doc_tool = doc_tool
+
+        self.class_nesting = 0
+
+        self.fundamentals = self.__create_fundamentals()
 
         self.__node_parsers = {
                     ast.ClassDef: self.__parse_class,
@@ -24,6 +29,55 @@ class PythonScanner(object):
             modname = os.path.basename (os.path.splitext(source)[0])
             self.__parse_module (tree.body, modname)
 
+    def __create_fundamentals(self):
+        string_link = \
+                Link('https://docs.python.org/2.7/library/functions.html#str',
+                    'str', None)
+        boolean_link = \
+                Link('https://docs.python.org/2.7/library/functions.html#bool',
+                        'bool', None)
+        true_link = \
+                Link('https://docs.python.org/2/library/constants.html#True',
+                    'True', None)
+        false_link = \
+               Link('https://docs.python.org/2/library/constants.html#False',
+                    'False', None)
+        integer_link = \
+                Link('https://docs.python.org/2/library/functions.html#int',
+                        'int', None)
+        float_link = \
+                Link('https://docs.python.org/2/library/functions.html#float',
+                        'float', None)
+        none_link = \
+                Link('https://docs.python.org/2/library/constants.html#None',
+                        'None', None)
+        unicode_link = \
+                Link('https://docs.python.org/2/library/functions.html#unicode',
+                        'unicode', None)
+        dict_link = \
+                Link('https://docs.python.org/2/tutorial/datastructures.html#dictionaries',
+                        'dict', None)
+
+        fundamentals = {
+                "none": none_link,
+                "boolean": boolean_link,
+                "bool": boolean_link,
+                "int": integer_link,
+                "integer": integer_link,
+                "float": float_link,
+                "unicode": unicode_link,
+                "str": string_link,
+                "string": string_link,
+                "True": true_link,
+                "true": true_link,
+                "False": false_link,
+                "false": false_link,
+                "dict": dict_link,
+                "dictionary": dict_link,
+        }
+
+        return fundamentals
+
     def __parse_module (self, body, modname):
         for node in body:
             f = self.__node_parsers.get(type(node))
@@ -31,6 +85,7 @@ class PythonScanner(object):
                 f (node, modname)
 
     def __parse_class (self, klass, parent_name):
+        self.class_nesting += 1
         klass_name = '.'.join((parent_name, klass.name))
         comment = google_doc_to_native(ast.get_docstring (klass)) 
         comment.filename = self.__current_filename
@@ -42,6 +97,8 @@ class PythonScanner(object):
             f = self.__node_parsers.get (type(node))
             if f:
                 f(node, klass_name)
+
+        self.class_nesting -= 1
 
     def __params_doc_to_dict (self, params_doc):
         dict_ = {}
@@ -70,10 +127,16 @@ class PythonScanner(object):
         else:
             retval = None
 
+        is_method = self.class_nesting > 0
+
+        if is_method:
+            parameters = parameters[1:]
+
         func_symbol = self.doc_tool.get_or_create_symbol(FunctionSymbol,
                 parameters=parameters,
                 return_value=retval,
                 comment=comment,
+                is_method = is_method,
                 display_name=func_name)
 
     def __parse_parameters(self, args, comment):
@@ -85,8 +148,18 @@ class PythonScanner(object):
 
         for arg in args.args:
             param_comment = param_comments.get (arg.id)
+            type_tokens = []
+            if param_comment:
+                type_ = param_comment.tags.pop('type', None)
+                if type_:
+                    link = self.fundamentals.get(type_)
+                    if link:
+                        type_tokens = [link]
+                    else:
+                        type_tokens = [type_]
+
             param = ParameterSymbol (argname=arg.id,
-                    type_tokens=[],
+                    type_tokens=type_tokens,
                     comment=param_comment)
             parameters.append (param)
 
@@ -160,6 +233,7 @@ class PythonExtension(BaseExtension):
         self.python_index = config.get('python_index')
         doc_tool.doc_tree.page_parser.register_well_known_name('python-api',
                 self.python_index_handler)
+        self._formatters['html'] = PythonHtmlFormatter(self.doc_tool, self)
 
     def setup(self):
         if not self.sources:
