@@ -8,6 +8,7 @@ from hotdoc.core.comment_block import Comment
 from docutils.statemachine import ViewList
 from docutils.writers.html4css1 import Writer as HtmlWriter
 from docutils.parsers.rst import roles, directives
+from xml.sax.saxutils import unescape
 
 _google_typed_arg_regex = re.compile(r'\s*(.+?)\s*\(\s*(.+?)\s*\)')
 
@@ -220,8 +221,9 @@ roles.register_local_role('ref', ref_role)
 
 
 class MyRestParser(object):
-    def __init__(self, doc_tool=None):
+    def __init__(self, extension, doc_tool=None):
         self.doc_tool = doc_tool
+        self.extension = extension
         self.writer = HotdocRestHtmlWriter()
 
     def translate(self, text, format_):
@@ -230,3 +232,8 @@ class MyRestParser(object):
         parts = publish_parts(text, writer=self.writer,
                 settings_overrides={'doc_tool': self.doc_tool})
         return parts['fragment']
+
+    def translate_comment(self, comment, format_):
+        print comment.filename
+        text = unescape(comment.description)
+        return self.translate(text, format_)

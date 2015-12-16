@@ -237,8 +237,9 @@ class PythonExtension(BaseExtension):
 
     def __init__(self, doc_tool, config):
         BaseExtension.__init__(self, doc_tool, config)
-        self._doc_parser = MyRestParser(doc_tool)
+        self._doc_parser = MyRestParser(self, doc_tool)
         self.sources = source_files_from_config(config, doc_tool)
+        self.package_root = os.path.commonprefix(self.sources)
         self.python_index = config.get('python_index')
         doc_tool.doc_tree.page_parser.register_well_known_name('python-api',
                 self.python_index_handler)
@@ -273,7 +274,7 @@ class PythonExtension(BaseExtension):
         index_path = os.path.join(doc_tree.prefix, self.python_index)
         index_path = self.doc_tool.resolve_config_path(index_path)
         new_page = doc_tree.build_tree(index_path, 'python-extension')
-        return index_path
+        return index_path, ''
 
     @staticmethod
     def add_arguments (parser):
