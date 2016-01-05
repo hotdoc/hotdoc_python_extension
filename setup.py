@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "hotdoc_python_extension",
-    version = "0.6.6.1",
+    version = "0.6.6.2",
     keywords = "python ast sphinx napoleon hotdoc",
     url='https://github.com/hotdoc/hotdoc_python_extension',
     author_email = 'mathieu.duponchelle@opencreed.com',
