@@ -273,8 +273,7 @@ class PythonExtension(BaseExtension):
 
         index_path = os.path.join(doc_tree.prefix, self.python_index)
         index_path = self.doc_tool.resolve_config_path(index_path)
-        new_page = doc_tree.build_tree(index_path, 'python-extension')
-        return index_path, ''
+        return index_path, '', 'python-extension'
 
     @staticmethod
     def add_arguments (parser):
