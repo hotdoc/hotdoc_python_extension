@@ -246,11 +246,12 @@ class PythonExtension(BaseExtension):
         self._formatters['html'] = PythonHtmlFormatter(self.doc_tool, self)
 
     def setup(self):
-        if not self.stale_source_files:
+        stale, unlisted = self.get_stale_files(self.sources)
+        if not stale:
             return
 
         self.scanner = PythonScanner (self.doc_tool, self,
-                self.stale_source_files)
+                stale)
 
         if not self.python_index:
             index_path = self.create_naive_index()
@@ -260,9 +261,6 @@ class PythonExtension(BaseExtension):
                     'python-extension')
             self.doc_tool.doc_tree.page_parser.prefix = old_prefix
             self.doc_tool.doc_tree.pages['python-extension-index.markdown'] = new_page
-
-    def get_source_files(self):
-        return self.sources
 
     def python_index_handler (self, doc_tree):
         if not self.python_index:
