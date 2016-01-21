@@ -1,7 +1,7 @@
 import os, ast, glob
 from hotdoc.core.base_extension import BaseExtension
 from hotdoc.core.symbols import *
-from hotdoc.core.doc_tool import HotdocWizard
+from hotdoc.core.wizard import HotdocWizard
 from hotdoc.core.doc_tree import Page
 from hotdoc.utils.wizard import QuickStartWizard
 from hotdoc.core.comment_block import comment_from_tag
@@ -204,6 +204,9 @@ These wildcards will be evaluated each time hotdoc is run.
 """
 
 def validate_filters(wizard, thing):
+    if thing is None:
+        return True
+
     if not QuickStartWizard.validate_globs_list(wizard, thing):
         return False
 
@@ -226,8 +229,8 @@ def resolve_patterns(source_patterns, conf_path_resolver):
     return source_files
 
 def source_files_from_config(config, conf_path_resolver):
-    sources = resolve_patterns(config.get('python_sources', []), conf_path_resolver)
-    filters = resolve_patterns(config.get('python_source_filters', []),
+    sources = resolve_patterns(config.get('python_sources') or [], conf_path_resolver)
+    filters = resolve_patterns(config.get('python_source_filters') or [],
             conf_path_resolver)
     sources = [item for item in sources if item not in filters]
     return [os.path.abspath(source) for source in sources]
@@ -246,28 +249,22 @@ class PythonExtension(BaseExtension):
         self._formatters['html'] = PythonHtmlFormatter(self.doc_tool, self)
 
     def setup(self):
+        print ("Setting up")
         stale, unlisted = self.get_stale_files(self.sources)
         if not stale:
             return
+
+        self.stale = stale
 
         self.scanner = PythonScanner (self.doc_tool, self,
                 stale)
 
         if not self.python_index:
-            index_path = self.create_naive_index()
-            old_prefix = self.doc_tool.doc_tree.page_parser.prefix
-            self.doc_tool.doc_tree.page_parser.prefix = os.path.dirname(index_path)
-            new_page = self.doc_tool.doc_tree.build_tree(index_path,
-                    'python-extension')
-            self.doc_tool.doc_tree.page_parser.prefix = old_prefix
-            self.doc_tool.doc_tree.pages['python-extension-index.markdown'] = new_page
+            self.update_naive_index()
 
     def python_index_handler (self, doc_tree):
         if not self.python_index:
-            new_page = Page('python-extension-index')
-            doc_tree.pages['python-extension-index.markdown'] = new_page
-            doc_tree.page_parser.parse_contents(new_page, '')
-            return 'python-extension-index.markdown'
+            return self.create_naive_index(self.sources)
 
         index_path = os.path.join(doc_tree.prefix, self.python_index)
         index_path = self.doc_tool.resolve_config_path(index_path)
