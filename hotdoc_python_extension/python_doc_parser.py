@@ -1,4 +1,5 @@
 import re
+import sys
 
 from sphinx.ext.napoleon import Config
 from sphinx.ext.napoleon import docstring
@@ -15,6 +16,7 @@ _google_typed_arg_regex = re.compile(r'\s*(.+?)\s*\(\s*(.+?)\s*\)')
 class MyGoogleDocString(docstring.GoogleDocstring):
     def __init__(self, *args, **kwargs):
         self.param_fields = []
+        self.attribute_fields = []
         docstring.GoogleDocstring.__init__(self, *args, **kwargs)
 
     def _consume_field(self, parse_type=True, prefer_type=False):
@@ -54,11 +56,46 @@ class MyGoogleDocString(docstring.GoogleDocstring):
         self.param_fields.extend(self._consume_fields())
         return []
 
+    def _parse_attributes_section(self, section):
+        self.attribute_fields.extend(self._consume_fields())
+        return []
+
 config = Config(napoleon_use_param=True, napoleon_use_rtype=True)
 
-def google_doc_to_native(doc):
+def strip_doc(doc):
+    return '\n'.join([l.lstrip() for l in doc.split('\n')])
+
+# From http://stackoverflow.com/questions/2504411/proper-indentation-for-python-multiline-strings
+def trim(docstring):
+    if not docstring:
+        return ''
+    # Convert tabs to spaces (following the normal Python rules)
+    # and split into a list of lines:
+    lines = docstring.expandtabs().splitlines()
+    # Determine minimum indentation (first line doesn't count):
+    indent = sys.maxint
+    for line in lines[1:]:
+        stripped = line.lstrip()
+        if stripped:
+            indent = min(indent, len(line) - len(stripped))
+    # Remove indentation (first line is special):
+    trimmed = [lines[0].strip()]
+    if indent < sys.maxint:
+        for line in lines[1:]:
+            trimmed.append(line[indent:].rstrip())
+    # Strip off trailing and leading blank lines:
+    while trimmed and not trimmed[-1]:
+        trimmed.pop()
+    while trimmed and not trimmed[0]:
+        trimmed.pop(0)
+    # Return a single string:
+    return '\n'.join(trimmed)
+
+def google_doc_to_native(doc_tool, doc):
     if not doc:
         return None
+
+    doc = trim(doc)
 
     docstring = MyGoogleDocString(doc, config)
     comment = Comment(description=docstring.__unicode__(),
@@ -73,6 +110,15 @@ def google_doc_to_native(doc):
                 description='\n'.join(field[2]),
                 tags=tags)
         comment.params[field[0]] = param_comment
+
+    for field in docstring.attribute_fields:
+        tags = {}
+        if field[1]:
+            tags['type'] = field[1]
+        prop_comment = Comment(name=field[0],
+                description='\n'.join(field[2]),
+                tags = tags)
+        doc_tool.add_comment(prop_comment)
 
     return comment
 
@@ -113,7 +159,9 @@ def codeitem_directive(dirname, arguments, options, content,
         lineno, content_offset, block_set, state, state_machine):
     if not content:
         content = [u""]
-  
+ 
+    print 'codeitem directive'
+
     m = _CALLABLE_RE.match(u"".join(arguments))
     m2 = _OTHER_RE.match(u"".join(arguments))
     if m:
@@ -234,6 +282,5 @@ class MyRestParser(object):
         return parts['fragment']
 
     def translate_comment(self, comment, format_):
-        print comment.filename
         text = unescape(comment.description)
         return self.translate(text, format_)

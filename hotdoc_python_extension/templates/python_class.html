@@ -1,0 +1,22 @@
+@require(klass, hierarchy, constructor)
+@extends('base_symbol.html')
+
+@def header():
+@constructor
+@end
+
+@def content():
+\
+@if hierarchy:
+<div class="hierarchy_container">
+	@hierarchy
+</div>
+@end
+
+@if klass.formatted_doc:
+<div class="class_details">
+	@klass.formatted_doc
+</div>
+@end
+\
+@end

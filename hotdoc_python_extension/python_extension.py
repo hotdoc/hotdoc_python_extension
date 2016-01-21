@@ -1,4 +1,5 @@
-import os, ast, glob
+import os, glob
+import astroid as ast
 from hotdoc.core.base_extension import BaseExtension
 from hotdoc.core.symbols import *
 from hotdoc.core.wizard import HotdocWizard
@@ -26,9 +27,8 @@ class PythonScanner(object):
 
         for source in sources:
             self.__current_filename = source
-            with open (source, 'r') as f:
-                code = f.read()
-            tree = ast.parse(code)
+            builder = ast.builder.AstroidBuilder()
+            tree = builder.file_build(source)
             modname = os.path.basename (os.path.splitext(source)[0])
             self.__parse_module (tree.body, modname)
 
@@ -90,21 +90,23 @@ class PythonScanner(object):
     def __parse_class (self, klass, parent_name):
         self.class_nesting += 1
         klass_name = '.'.join((parent_name, klass.name))
-        docstring = ast.get_docstring(klass)
-        comment = google_doc_to_native(docstring)
+        comment = google_doc_to_native(self.doc_tool, klass.doc)
 
         if comment:
             comment.filename = self.__current_filename
+
+        for method in klass.mymethods():
+            self.__parse_function(method, klass_name)
+
+        for method in klass.methods():
+            if method.name == '__init__' and method.parent.parent.name != \
+                    '__builtin__':
+                self.__parse_function(method, klass_name, is_ctor_for=klass_name)
 
         class_symbol = self.__extension.get_or_create_symbol(ClassSymbol,
                 comment=comment,
                 filename=self.__current_filename,
                 display_name=klass_name)
-
-        for node in klass.body:
-            f = self.__node_parsers.get (type(node))
-            if f:
-                f(node, klass_name)
 
         self.class_nesting -= 1
 
@@ -115,12 +117,11 @@ class PythonScanner(object):
 
         return dict_
 
-    def __parse_function (self, function, parent_name):
+    def __parse_function (self, function, parent_name, is_ctor_for=None):
         func_name = '.'.join ((parent_name, function.name))
 
-        docstring = ast.get_docstring (function)
-        if docstring:
-            comment = google_doc_to_native(docstring)
+        if function.doc:
+            comment = google_doc_to_native(self.doc_tool, function.doc)
             comment.filename = self.__current_filename
         else:
             comment = None
@@ -145,18 +146,20 @@ class PythonScanner(object):
                 return_value=retval,
                 comment=comment,
                 is_method = is_method,
+                is_ctor_for = is_ctor_for,
                 filename=self.__current_filename,
                 display_name=func_name)
 
     def __parse_parameters(self, args, comment):
         parameters = []
+
         if comment:
             param_comments = comment.params
         else:
             param_comments = {}
 
-        for arg in args.args:
-            param_comment = param_comments.get (arg.id)
+        for arg in args.args or []:
+            param_comment = param_comments.get (arg.name)
             type_tokens = []
             if param_comment:
                 type_ = param_comment.tags.pop('type', None)
@@ -167,7 +170,7 @@ class PythonScanner(object):
                     else:
                         type_tokens = [type_]
 
-            param = ParameterSymbol (argname=arg.id,
+            param = ParameterSymbol (argname=arg.name,
                     type_tokens=type_tokens,
                     comment=param_comment)
             parameters.append (param)
