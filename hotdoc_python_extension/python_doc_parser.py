@@ -160,8 +160,6 @@ def codeitem_directive(dirname, arguments, options, content,
         lineno, content_offset, block_set, state, state_machine):
     if not content:
         content = [u""]
- 
-    print 'codeitem directive'
 
     m = _CALLABLE_RE.match(u"".join(arguments))
     m2 = _OTHER_RE.match(u"".join(arguments))
