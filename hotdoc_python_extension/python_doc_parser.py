@@ -63,7 +63,7 @@ class MyGoogleDocString(docstring.GoogleDocstring):
         return []
 
     def _parse_returns_section(self, section):
-        self.return_fields.extend(self._consume_returns_section())
+        self.return_fields.extend(self._consume_fields(prefer_type=True))
         return []
 
 config = Config(napoleon_use_param=True, napoleon_use_rtype=True)
@@ -127,6 +127,7 @@ def google_doc_to_native(doc_tool, doc):
                 tags = tags)
         attr_comments[field[0]] = prop_comment
 
+    return_comments = []
     for field in docstring.return_fields:
         tags = {}
         if field[1]:
@@ -134,9 +135,9 @@ def google_doc_to_native(doc_tool, doc):
         return_comment = Comment(
                 description='\n'.join(field[2]),
                 tags=tags)
-        comment.tags['returns'] = return_comment
-        # FIXME in hotdoc: support multi return values
-        break
+        return_comments.append(return_comment)
+
+    comment.tags['returns'] = return_comments
 
     return comment, attr_comments
 

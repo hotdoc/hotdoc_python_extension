@@ -201,10 +201,13 @@ class PythonScanner(object):
             return None
 
         try:
-            ret_comment = comment.tags.pop('returns')
-            type_tokens = self.__type_tokens_from_comment(ret_comment)
-            return ReturnValueSymbol(type_tokens=type_tokens,
-                    comment=ret_comment)
+            ret_comments = comment.tags.pop('returns')
+            return_value = []
+            for ret_comment in ret_comments:
+                type_tokens = self.__type_tokens_from_comment(ret_comment)
+                return_value.append(ReturnItemSymbol(type_tokens=type_tokens,
+                        comment=ret_comment))
+            return return_value
         except KeyError:
             return None
 
