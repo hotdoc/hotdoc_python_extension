@@ -1,8 +1,6 @@
 import re
 import sys
 
-from sphinx.ext.napoleon import Config
-from sphinx.ext.napoleon import docstring
 from docutils.core import publish_parts
 from docutils import nodes
 from hotdoc.core.comment_block import Comment
@@ -10,6 +8,9 @@ from docutils.statemachine import ViewList
 from docutils.writers.html4css1 import Writer as HtmlWriter
 from docutils.parsers.rst import roles, directives
 from xml.sax.saxutils import unescape
+
+from hotdoc_python_extension.napoleon import Config
+from hotdoc_python_extension.napoleon import docstring
 
 _google_typed_arg_regex = re.compile(r'\s*(.+?)\s*\(\s*(.+?)\s*\)')
 
