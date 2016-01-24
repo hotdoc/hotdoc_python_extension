@@ -1,5 +1,6 @@
 import os, glob
 import astroid as ast
+import pypandoc
 from hotdoc.core.base_extension import BaseExtension
 from hotdoc.core.symbols import *
 from hotdoc.core.wizard import HotdocWizard
@@ -24,6 +25,7 @@ class PythonScanner(object):
                 }
 
         self.__extension = extension
+        self.mod_comments = {}
 
         for source in sources:
             relpath = os.path.relpath(source, self.__extension.package_root)
@@ -32,6 +34,11 @@ class PythonScanner(object):
             self.__current_filename = source
             builder = ast.builder.AstroidBuilder()
             tree = builder.file_build(source)
+            modcomment, attribute_comments = google_doc_to_native(self.doc_tool,
+                    tree.doc)
+            if modcomment:
+                self.mod_comments[modname] = modcomment
+
             self.__parse_module (tree.body, modname)
 
     def __create_fundamentals(self):
@@ -344,6 +351,16 @@ class PythonExtension(BaseExtension):
         relpath = os.path.relpath(source_file, self.package_root)
         modname = os.path.splitext(relpath)[0].replace('/', '.')
         return modname
+
+    def _get_naive_page_description(self, link_title):
+        modcomment = self.scanner.mod_comments.get(link_title)
+        if modcomment.description:
+            out = '## %s\n\n' % link_title
+            out += pypandoc.convert(modcomment.description, to='md',
+                    format='rst')
+            return out
+
+        return BaseExtension._get_naive_page_description(self, link_title)
 
 def get_extension_classes():
     return [PythonExtension]

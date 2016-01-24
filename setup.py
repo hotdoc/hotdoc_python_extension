@@ -17,5 +17,6 @@ setup(
     entry_points = {'hotdoc.extensions': 'get_extension_classes = hotdoc_python_extension.python_extension:get_extension_classes'},
     install_requires = [
         'sphinx>=1.3.3',
+        'pypandoc==1.1.3',
     ]
 )

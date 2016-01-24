@@ -93,7 +93,7 @@ def trim(docstring):
 
 def google_doc_to_native(doc_tool, doc):
     if not doc:
-        return None
+        return (None, None)
 
     doc = trim(doc)
 
@@ -273,9 +273,9 @@ class MyRestParser(object):
         self.extension = extension
         self.writer = HotdocRestHtmlWriter()
 
-    def translate(self, text, format_):
+    def translate(self, text, format_='markdown'):
         if format_ != 'html':
-            raise Exception("Unhandled format %s" % format_)
+            return text
         parts = publish_parts(text, writer=self.writer,
                 settings_overrides={'doc_tool': self.doc_tool})
         return parts['fragment']
