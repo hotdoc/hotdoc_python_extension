@@ -180,14 +180,7 @@ class PythonScanner(object):
             comment = None
 
         parameters = self.__parse_parameters(function.args, comment)
-
-        if comment:
-            return_tag = comment.tags.get('returns')
-            return_comment = comment_from_tag(return_tag)
-            retval = ReturnValueSymbol (type_tokens=[],
-                    comment=return_comment)
-        else:
-            retval = None
+        retval = self.__parse_return_value(comment)
 
         is_method = self.class_nesting > 0
 
@@ -202,6 +195,18 @@ class PythonScanner(object):
                 is_ctor_for = is_ctor_for,
                 filename=self.__current_filename,
                 display_name=func_name)
+
+    def __parse_return_value(self, comment):
+        if not comment:
+            return None
+
+        try:
+            ret_comment = comment.tags.pop('returns')
+            type_tokens = self.__type_tokens_from_comment(ret_comment)
+            return ReturnValueSymbol(type_tokens=type_tokens,
+                    comment=ret_comment)
+        except KeyError:
+            return None
 
     def __parse_parameters(self, args, comment):
         parameters = []

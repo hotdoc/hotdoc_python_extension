@@ -18,6 +18,7 @@ class MyGoogleDocString(docstring.GoogleDocstring):
     def __init__(self, *args, **kwargs):
         self.param_fields = []
         self.attribute_fields = []
+        self.return_fields = []
         docstring.GoogleDocstring.__init__(self, *args, **kwargs)
 
     def _consume_field(self, parse_type=True, prefer_type=False):
@@ -59,6 +60,10 @@ class MyGoogleDocString(docstring.GoogleDocstring):
 
     def _parse_attributes_section(self, section):
         self.attribute_fields.extend(self._consume_fields())
+        return []
+
+    def _parse_returns_section(self, section):
+        self.return_fields.extend(self._consume_returns_section())
         return []
 
 config = Config(napoleon_use_param=True, napoleon_use_rtype=True)
@@ -121,6 +126,17 @@ def google_doc_to_native(doc_tool, doc):
                 description='\n'.join(field[2]),
                 tags = tags)
         attr_comments[field[0]] = prop_comment
+
+    for field in docstring.return_fields:
+        tags = {}
+        if field[1]:
+            tags['type'] = field[1]
+        return_comment = Comment(
+                description='\n'.join(field[2]),
+                tags=tags)
+        comment.tags['returns'] = return_comment
+        # FIXME in hotdoc: support multi return values
+        break
 
     return comment, attr_comments
 
