@@ -111,6 +111,7 @@ def google_doc_to_native(doc_tool, doc):
                 tags=tags)
         comment.params[field[0]] = param_comment
 
+    attr_comments = {}
     for field in docstring.attribute_fields:
         tags = {}
         if field[1]:
@@ -118,9 +119,9 @@ def google_doc_to_native(doc_tool, doc):
         prop_comment = Comment(name=field[0],
                 description='\n'.join(field[2]),
                 tags = tags)
-        doc_tool.add_comment(prop_comment)
+        attr_comments[field[0]] = prop_comment
 
-    return comment
+    return comment, attr_comments
 
 class HotdocRestHtmlWriter(HtmlWriter):
     pass

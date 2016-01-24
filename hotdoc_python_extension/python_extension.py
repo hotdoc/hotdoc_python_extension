@@ -26,10 +26,12 @@ class PythonScanner(object):
         self.__extension = extension
 
         for source in sources:
+            relpath = os.path.relpath(source, self.__extension.package_root)
+            # FIXME: ahem
+            modname = os.path.splitext(relpath)[0].replace('/', '.')
             self.__current_filename = source
             builder = ast.builder.AstroidBuilder()
             tree = builder.file_build(source)
-            modname = os.path.basename (os.path.splitext(source)[0])
             self.__parse_module (tree.body, modname)
 
     def __create_fundamentals(self):
@@ -90,18 +92,23 @@ class PythonScanner(object):
     def __parse_class (self, klass, parent_name):
         self.class_nesting += 1
         klass_name = '.'.join((parent_name, klass.name))
-        comment = google_doc_to_native(self.doc_tool, klass.doc)
+        comment, attr_comments = google_doc_to_native(self.doc_tool, klass.doc)
 
         if comment:
             comment.filename = self.__current_filename
 
         for method in klass.mymethods():
-            self.__parse_function(method, klass_name)
+            self.__parse_function(method, klass_name, is_method=True)
 
         for method in klass.methods():
             if method.name == '__init__' and method.parent.parent.name != \
                     '__builtin__':
-                self.__parse_function(method, klass_name, is_ctor_for=klass_name)
+                self.__parse_function(method, klass_name, is_method=True,
+                        is_ctor_for=klass_name)
+
+        for attr_name, attr in klass.instance_attrs.items():
+            attr_comment = attr_comments.get(attr_name)
+            self.__parse_attribute(klass_name, attr_comment, attr_name, attr)
 
         class_symbol = self.__extension.get_or_create_symbol(ClassSymbol,
                 comment=comment,
@@ -110,6 +117,38 @@ class PythonScanner(object):
 
         self.class_nesting -= 1
 
+    def __type_tokens_from_comment(self, comment):
+        if comment is None:
+            return []
+
+        try:
+            pytype = comment.tags.pop('type')
+        except KeyError:
+            return []
+
+        try:
+            link = self.fundamentals[pytype]
+        except KeyError:
+            link = Link(None, pytype, pytype)
+
+        return [link]
+
+    def __parse_attribute(self, parent_name, attr_comment, attr_name, attr):
+        if attr_name.startswith('__'):
+            return
+
+        attr_name = '.'.join((parent_name, attr_name))
+
+        type_tokens = self.__type_tokens_from_comment(attr_comment)
+
+        type_ = QualifiedSymbol(type_tokens=type_tokens)
+
+        self.__extension.get_or_create_symbol(PropertySymbol,
+                comment=attr_comment,
+                filename=self.__current_filename,
+                display_name=attr_name,
+                prop_type=type_)
+
     def __params_doc_to_dict (self, params_doc):
         dict_ = {}
         for param in params_doc:
@@ -117,11 +156,18 @@ class PythonScanner(object):
 
         return dict_
 
-    def __parse_function (self, function, parent_name, is_ctor_for=None):
+    def __parse_function (self, function, parent_name,
+            is_method=False, is_ctor_for=None):
+        if function.name.startswith('__'):
+            return
+
+        if not is_method and function.name.startswith('_'):
+            return
+
         func_name = '.'.join ((parent_name, function.name))
 
         if function.doc:
-            comment = google_doc_to_native(self.doc_tool, function.doc)
+            comment, attr_comments = google_doc_to_native(self.doc_tool, function.doc)
             comment.filename = self.__current_filename
         else:
             comment = None
@@ -160,15 +206,7 @@ class PythonScanner(object):
 
         for arg in args.args or []:
             param_comment = param_comments.get (arg.name)
-            type_tokens = []
-            if param_comment:
-                type_ = param_comment.tags.pop('type', None)
-                if type_:
-                    link = self.fundamentals.get(type_)
-                    if link:
-                        type_tokens = [link]
-                    else:
-                        type_tokens = [type_]
+            type_tokens = self.__type_tokens_from_comment(param_comment)
 
             param = ParameterSymbol (argname=arg.name,
                     type_tokens=type_tokens,
@@ -245,14 +283,19 @@ class PythonExtension(BaseExtension):
         BaseExtension.__init__(self, doc_tool, config)
         self._doc_parser = MyRestParser(self, doc_tool)
         self.sources = source_files_from_config(config, doc_tool)
-        self.package_root = os.path.commonprefix(self.sources)
+
+        self.package_root = config.get('python_package_root')
+        if not self.package_root:
+            self.package_root = os.path.commonprefix(self.sources)
+        self.package_root = os.path.abspath(os.path.join(self.package_root,
+            '..'))
+
         self.python_index = config.get('python_index')
         doc_tool.doc_tree.page_parser.register_well_known_name('python-api',
                 self.python_index_handler)
         self._formatters['html'] = PythonHtmlFormatter(self.doc_tool, self)
 
     def setup(self):
-        print ("Setting up")
         stale, unlisted = self.get_stale_files(self.sources)
         if not stale:
             return
@@ -287,6 +330,11 @@ class PythonExtension(BaseExtension):
                 extra_prompt=PYTHON_FILTERS_PROMPT,
                 validate_function=validate_filters,
                 finalize_function=HotdocWizard.finalize_paths)
+        group.add_argument ("--python-package-root", action="store", nargs="+",
+                dest="python_package_root", help="Path to the root of the"
+                " documented package / application",
+                validate_function=HotdocWizard.validate_folder,
+                finalize_function=HotdocWizard.finalize_path)
         group.add_argument ("--python-index", action="store",
                 dest="python_index",
                 help="Path to the python root markdown file",
