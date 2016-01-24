@@ -340,5 +340,10 @@ class PythonExtension(BaseExtension):
                 help="Path to the python root markdown file",
                 finalize_function=HotdocWizard.finalize_path)
 
+    def _get_naive_link_title(self, source_file):
+        relpath = os.path.relpath(source_file, self.package_root)
+        modname = os.path.splitext(relpath)[0].replace('/', '.')
+        return modname
+
 def get_extension_classes():
     return [PythonExtension]
