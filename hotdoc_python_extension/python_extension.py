@@ -8,7 +8,7 @@ from hotdoc.core.doc_tree import Page
 from hotdoc.utils.wizard import QuickStartWizard
 from hotdoc.core.comment_block import comment_from_tag
 
-from .python_doc_parser import google_doc_to_native, MyRestParser
+from .python_doc_parser import google_doc_to_native
 from .python_html_formatter import PythonHtmlFormatter
 
 class PythonScanner(object):
@@ -34,8 +34,7 @@ class PythonScanner(object):
             self.__current_filename = source
             builder = ast.builder.AstroidBuilder()
             tree = builder.file_build(source)
-            modcomment, attribute_comments = google_doc_to_native(self.doc_tool,
-                    tree.doc)
+            modcomment, attribute_comments = google_doc_to_native(tree.doc)
             if modcomment:
                 self.mod_comments[modname] = modcomment
 
@@ -70,6 +69,10 @@ class PythonScanner(object):
                 Link('https://docs.python.org/2/tutorial/datastructures.html#dictionaries',
                         'dict', None)
 
+        callable_link = \
+                Link('https://docs.python.org/2/library/functions.html#callable',
+                        'callable', None)
+
         fundamentals = {
                 "none": none_link,
                 "boolean": boolean_link,
@@ -85,6 +88,7 @@ class PythonScanner(object):
                 "False": false_link,
                 "false": false_link,
                 "dict": dict_link,
+                "callable": callable_link,
                 "dictionary": dict_link,
         }
 
@@ -99,12 +103,12 @@ class PythonScanner(object):
     def __parse_class (self, klass, parent_name):
         self.class_nesting += 1
         klass_name = '.'.join((parent_name, klass.name))
-        comment, attr_comments = google_doc_to_native(self.doc_tool, klass.doc)
+        comment, attr_comments = google_doc_to_native(klass.doc)
 
         if comment:
             comment.filename = self.__current_filename
 
-        for method in klass.mymethods():
+        for method in sorted(klass.mymethods(), key=lambda x: x.name):
             self.__parse_function(method, klass_name, is_method=True)
 
         for method in klass.methods():
@@ -113,7 +117,7 @@ class PythonScanner(object):
                 self.__parse_function(method, klass_name, is_method=True,
                         is_ctor_for=klass_name)
 
-        for attr_name, attr in klass.instance_attrs.items():
+        for attr_name, attr in sorted(klass.instance_attrs.items()):
             attr_comment = attr_comments.get(attr_name)
             self.__parse_attribute(klass_name, attr_comment, attr_name, attr)
 
@@ -174,7 +178,7 @@ class PythonScanner(object):
         func_name = '.'.join ((parent_name, function.name))
 
         if function.doc:
-            comment, attr_comments = google_doc_to_native(self.doc_tool, function.doc)
+            comment, attr_comments = google_doc_to_native(function.doc)
             comment.filename = self.__current_filename
         else:
             comment = None
@@ -198,7 +202,7 @@ class PythonScanner(object):
 
     def __parse_return_value(self, comment):
         if not comment:
-            return None
+            return [None]
 
         try:
             ret_comments = comment.tags.pop('returns')
@@ -207,9 +211,9 @@ class PythonScanner(object):
                 type_tokens = self.__type_tokens_from_comment(ret_comment)
                 return_value.append(ReturnItemSymbol(type_tokens=type_tokens,
                         comment=ret_comment))
-            return return_value
+            return return_value or [None]
         except KeyError:
-            return None
+            return [None]
 
     def __parse_parameters(self, args, comment):
         parameters = []
@@ -296,7 +300,6 @@ class PythonExtension(BaseExtension):
 
     def __init__(self, doc_tool, config):
         BaseExtension.__init__(self, doc_tool, config)
-        self._doc_parser = MyRestParser(self, doc_tool)
         self.sources = source_files_from_config(config, doc_tool)
 
         self.package_root = config.get('python_package_root')

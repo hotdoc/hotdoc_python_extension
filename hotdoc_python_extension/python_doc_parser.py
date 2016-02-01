@@ -97,7 +97,7 @@ def trim(docstring):
     # Return a single string:
     return '\n'.join(trimmed)
 
-def google_doc_to_native(doc_tool, doc):
+def google_doc_to_native(doc):
     if not doc:
         return (None, None)
 
@@ -253,13 +253,13 @@ directives.register_directive('envvar', codeitem_directive)
 
 def ref_role (name, raw_text, text, lineno, inliner,
         options=None, content=None):
-    doc_tool = inliner.document.settings.doc_tool
+    link_resolver = inliner.document.settings.link_resolver
     if options is None:
         options = {}
     if content is None:
         content = []
 
-    link = doc_tool.link_resolver.get_named_link(text)
+    link = link_resolver.get_named_link(text)
 
     if link is None:
         node = nodes.Text(text)
@@ -286,18 +286,16 @@ roles.register_local_role('ref', ref_role)
 
 
 class MyRestParser(object):
-    def __init__(self, extension, doc_tool=None):
-        self.doc_tool = doc_tool
+    def __init__(self, extension, output_format):
         self.extension = extension
         self.writer = HotdocRestHtmlWriter()
+        self.__output_format = output_format
 
-    def translate(self, text, format_='markdown'):
-        if format_ != 'html':
+    def translate(self, text, link_resolver):
+        if self.__output_format != 'html':
             return text
-        parts = publish_parts(text, writer=self.writer,
-                settings_overrides={'doc_tool': self.doc_tool})
-        return parts['fragment']
 
-    def translate_comment(self, comment, format_):
-        text = unescape(comment.description)
-        return self.translate(text, format_)
+        text = unescape(text)
+        parts = publish_parts(text, writer=self.writer,
+                settings_overrides={'link_resolver': link_resolver})
+        return parts['fragment']

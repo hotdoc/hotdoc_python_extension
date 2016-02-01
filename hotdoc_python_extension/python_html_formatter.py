@@ -2,12 +2,16 @@ import os
 from hotdoc.formatters.html.html_formatter import HtmlFormatter
 from hotdoc.core.symbols import FunctionSymbol
 
+from .python_doc_parser import MyRestParser
+
 class PythonHtmlFormatter(HtmlFormatter):
     def __init__(self, doc_tool, extension):
         module_path = os.path.dirname(__file__)
         searchpath = [os.path.join(module_path, "templates")]
         self.__extension = extension
         HtmlFormatter.__init__(self, doc_tool, searchpath)
+        self._docstring_formatter = MyRestParser(extension, 'html')
+        self._standalone_doc_formatter = MyRestParser(extension, 'markdown')
 
     def _format_prototype(self, function, is_pointer, title):
         template = self.engine.get_template('python_prototype.html')
@@ -20,6 +24,17 @@ class PythonHtmlFormatter(HtmlFormatter):
 
         return res
 
+    # pylint: disable=too-many-arguments
+    def _format_callable_summary(self, callable_, return_value, function_name,
+                                 is_callable, is_pointer):
+        template = self.engine.get_template('callable_summary.html')
+
+        return template.render({'symbol': callable_,
+                                'return_value': [],
+                                'function_name': function_name,
+                                'is_callable': is_callable,
+                                'is_pointer': is_pointer})
+
     def _format_parameter_symbol (self, parameter):
         if parameter.type_tokens:
             parameter.extension_contents['type-link'] = \
@@ -27,7 +42,7 @@ class PythonHtmlFormatter(HtmlFormatter):
         return HtmlFormatter._format_parameter_symbol(self, parameter)
 
     def _format_class_symbol(self, klass):
-        constructor = self.doc_tool.session.query(FunctionSymbol).filter(
+        constructor = self.doc_tool.doc_database.get_session().query(FunctionSymbol).filter(
                 FunctionSymbol.is_ctor_for==klass.unique_name).first()
         if constructor is None:
             return HtmlFormatter._format_class_symbol(self, klass)
@@ -36,7 +51,7 @@ class PythonHtmlFormatter(HtmlFormatter):
         template = self.engine.get_template('python_class.html')
 
         self._format_symbols(constructor.get_children_symbols())
-        constructor.formatted_doc = self._format_doc(constructor.comment)
+        constructor.formatted_doc = self.format_comment(constructor.comment)
         constructor.link.title = klass.display_name
         constructor = self._format_callable(constructor, 'class',
                 klass.link.title)[0]
