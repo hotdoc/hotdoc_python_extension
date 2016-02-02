@@ -99,7 +99,7 @@ def trim(docstring):
 
 def google_doc_to_native(doc):
     if not doc:
-        return (None, None)
+        return (None, {})
 
     doc = trim(doc)
 

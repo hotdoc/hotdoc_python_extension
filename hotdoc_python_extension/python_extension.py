@@ -366,6 +366,9 @@ class PythonExtension(BaseExtension):
 
     def _get_naive_page_description(self, link_title):
         modcomment = self.scanner.mod_comments.get(link_title)
+        if modcomment is None:
+            return ''
+
         if modcomment.description:
             out = '## %s\n\n' % link_title
             out += pypandoc.convert(modcomment.description, to='md',
