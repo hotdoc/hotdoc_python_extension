@@ -5,11 +5,12 @@ from hotdoc.core.symbols import FunctionSymbol
 from .python_doc_parser import MyRestParser
 
 class PythonHtmlFormatter(HtmlFormatter):
-    def __init__(self, doc_tool, extension):
+    def __init__(self, extension, doc_database):
         module_path = os.path.dirname(__file__)
         searchpath = [os.path.join(module_path, "templates")]
         self.__extension = extension
-        HtmlFormatter.__init__(self, doc_tool, searchpath)
+        self.__doc_database = doc_database
+        HtmlFormatter.__init__(self, searchpath)
         self._docstring_formatter = MyRestParser(extension, 'html')
         self._standalone_doc_formatter = MyRestParser(extension, 'markdown')
 
@@ -42,7 +43,7 @@ class PythonHtmlFormatter(HtmlFormatter):
         return HtmlFormatter._format_parameter_symbol(self, parameter)
 
     def _format_class_symbol(self, klass):
-        constructor = self.doc_tool.doc_database.get_session().query(FunctionSymbol).filter(
+        constructor = self.__doc_database.get_session().query(FunctionSymbol).filter(
                 FunctionSymbol.is_ctor_for==klass.unique_name).first()
         if constructor is None:
             return HtmlFormatter._format_class_symbol(self, klass)

@@ -311,7 +311,8 @@ class PythonExtension(BaseExtension):
         self.python_index = config.get('python_index')
         doc_tool.doc_tree.page_parser.register_well_known_name('python-api',
                 self.python_index_handler)
-        self._formatters['html'] = PythonHtmlFormatter(self.doc_tool, self)
+        self._formatters['html'] = PythonHtmlFormatter(
+            self, doc_tool.doc_database)
 
     def setup(self):
         stale, unlisted = self.get_stale_files(self.sources)
