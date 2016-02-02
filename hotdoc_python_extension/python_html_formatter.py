@@ -1,5 +1,5 @@
 import os
-from hotdoc.formatters.html.html_formatter import HtmlFormatter
+from hotdoc.formatters.html_formatter import HtmlFormatter
 from hotdoc.core.symbols import FunctionSymbol
 
 from .python_doc_parser import MyRestParser
@@ -11,8 +11,7 @@ class PythonHtmlFormatter(HtmlFormatter):
         self.__extension = extension
         self.__doc_database = doc_database
         HtmlFormatter.__init__(self, searchpath)
-        self._docstring_formatter = MyRestParser(extension, 'html')
-        self._standalone_doc_formatter = MyRestParser(extension, 'markdown')
+        self.__docstring_formatter = MyRestParser(extension)
 
     def _format_prototype(self, function, is_pointer, title):
         template = self.engine.get_template('python_prototype.html')
@@ -41,6 +40,14 @@ class PythonHtmlFormatter(HtmlFormatter):
             parameter.extension_contents['type-link'] = \
                     self._format_type_tokens(parameter.type_tokens)
         return HtmlFormatter._format_parameter_symbol(self, parameter)
+
+    def _format_docstring(self, docstring, link_resolver, to_native):                                    
+        if to_native:                                                                                    
+            format_ = 'markdown'
+        else:
+            format_ = 'html'
+        return self.__docstring_formatter.translate(                                                     
+            docstring, link_resolver, format_)
 
     def _format_class_symbol(self, klass):
         constructor = self.__doc_database.get_session().query(FunctionSymbol).filter(

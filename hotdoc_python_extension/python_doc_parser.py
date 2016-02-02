@@ -286,13 +286,12 @@ roles.register_local_role('ref', ref_role)
 
 
 class MyRestParser(object):
-    def __init__(self, extension, output_format):
+    def __init__(self, extension):
         self.extension = extension
         self.writer = HotdocRestHtmlWriter()
-        self.__output_format = output_format
 
-    def translate(self, text, link_resolver):
-        if self.__output_format != 'html':
+    def translate(self, text, link_resolver, output_format):
+        if output_format != 'html':
             return text
 
         text = unescape(text)
