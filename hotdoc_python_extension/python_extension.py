@@ -2,6 +2,7 @@ import os, glob
 import astroid as ast
 import pypandoc
 from hotdoc.core.base_extension import BaseExtension
+from hotdoc.core.file_includer import find_md_file
 from hotdoc.core.symbols import *
 from hotdoc.core.wizard import HotdocWizard
 from hotdoc.core.doc_tree import Page
@@ -331,8 +332,7 @@ class PythonExtension(BaseExtension):
         if not self.python_index:
             return self.create_naive_index(self.sources)
 
-        index_path = os.path.join(doc_tree.prefix, self.python_index)
-        index_path = self.doc_tool.resolve_config_path(index_path)
+        index_path = find_md_file(self.python_index, self.doc_tool.include_paths)
         return index_path, '', 'python-extension'
 
     @staticmethod
