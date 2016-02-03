@@ -254,22 +254,41 @@ directives.register_directive('envvar', codeitem_directive)
 def ref_role (name, raw_text, text, lineno, inliner,
         options=None, content=None):
     link_resolver = inliner.document.settings.link_resolver
+    cur_module = inliner.document.settings.cur_module
+
+    cur_module_components = cur_module.split('.')
+
     if options is None:
         options = {}
     if content is None:
         content = []
 
-    link = link_resolver.get_named_link(text)
+    text_components = text.split('.')
+
+    rel_distance = len(cur_module_components) - len(text_components) + 1
+
+    link = None
+
+    for i in range(rel_distance):
+        l = len(cur_module_components) - i
+        potential_name = '.'.join(cur_module_components[:l] + [text])
+        link = link_resolver.get_named_link(potential_name)
+        if link:
+            break
 
     if link is None:
-        node = nodes.Text(text)
+        link = link_resolver.get_named_link(text)
+
+    if link is None:
+        node = nodes.emphasis(text, text)
     else:
         node = nodes.reference(link.title, link.title, refuri=link.get_link(),
                 **options)
 
     return [node], []
 
-roles.register_local_role ('func', ref_role)
+roles.register_local_role('', ref_role)
+roles.register_local_role('func', ref_role)
 roles.register_local_role('mod', ref_role)
 roles.register_local_role('data', ref_role)
 roles.register_local_role('const', ref_role)
@@ -290,11 +309,12 @@ class MyRestParser(object):
         self.extension = extension
         self.writer = HotdocRestHtmlWriter()
 
-    def translate(self, text, link_resolver, output_format):
+    def translate(self, text, link_resolver, output_format, cur_module):
         if output_format != 'html':
             return text
 
         text = unescape(text)
         parts = publish_parts(text, writer=self.writer,
-                settings_overrides={'link_resolver': link_resolver})
+                settings_overrides={'link_resolver': link_resolver,
+                    'cur_module': cur_module})
         return parts['fragment']

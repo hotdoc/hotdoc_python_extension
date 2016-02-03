@@ -1,6 +1,6 @@
 import os
 from hotdoc.formatters.html_formatter import HtmlFormatter
-from hotdoc.core.symbols import FunctionSymbol
+from hotdoc.core.symbols import FunctionSymbol, Symbol
 
 from .python_doc_parser import MyRestParser
 
@@ -12,6 +12,8 @@ class PythonHtmlFormatter(HtmlFormatter):
         self.__doc_database = doc_database
         HtmlFormatter.__init__(self, searchpath)
         self.__docstring_formatter = MyRestParser(extension)
+        self.__current_module_name = None
+        self.__current_package_name = None
 
     def _format_prototype(self, function, is_pointer, title):
         template = self.engine.get_template('python_prototype.html')
@@ -41,13 +43,13 @@ class PythonHtmlFormatter(HtmlFormatter):
                     self._format_type_tokens(parameter.type_tokens)
         return HtmlFormatter._format_parameter_symbol(self, parameter)
 
-    def _format_docstring(self, docstring, link_resolver, to_native):                                    
+    def _format_docstring(self, docstring, link_resolver, to_native):
         if to_native:                                                                                    
             format_ = 'markdown'
         else:
             format_ = 'html'
-        return self.__docstring_formatter.translate(                                                     
-            docstring, link_resolver, format_)
+        return self.__docstring_formatter.translate(
+            docstring, link_resolver, format_, self.__current_package_name)
 
     def _format_class_symbol(self, klass):
         constructor = self.__doc_database.get_session().query(FunctionSymbol).filter(
@@ -70,3 +72,14 @@ class PythonHtmlFormatter(HtmlFormatter):
                                  'constructor': constructor,
                                  'hierarchy': hierarchy}),
                 False)
+
+    def format_symbol(self, symbol, link_resolver):
+        if isinstance(symbol, Symbol):
+            if self.__current_module_name != symbol.filename:
+                self.__current_module_name = symbol.filename
+                relpath = os.path.relpath(self.__current_module_name,
+                        self.__extension.package_root)
+                modname = os.path.splitext(relpath)[0].replace('/', '.')
+                self.__current_package_name = modname
+
+        return HtmlFormatter.format_symbol(self, symbol, link_resolver)
