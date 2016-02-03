@@ -13,8 +13,8 @@ from .python_doc_parser import google_doc_to_native
 from .python_html_formatter import PythonHtmlFormatter
 
 class PythonScanner(object):
-    def __init__(self, doc_tool, extension, sources):
-        self.doc_tool = doc_tool
+    def __init__(self, doc_repo, extension, sources):
+        self.doc_repo = doc_repo
 
         self.class_nesting = 0
 
@@ -299,9 +299,9 @@ def source_files_from_config(config, conf_path_resolver):
 class PythonExtension(BaseExtension):
     EXTENSION_NAME = 'python-extension'
 
-    def __init__(self, doc_tool, config):
-        BaseExtension.__init__(self, doc_tool, config)
-        self.sources = source_files_from_config(config, doc_tool)
+    def __init__(self, doc_repo, config):
+        BaseExtension.__init__(self, doc_repo, config)
+        self.sources = source_files_from_config(config, doc_repo)
 
         self.package_root = config.get('python_package_root')
         if not self.package_root:
@@ -310,10 +310,10 @@ class PythonExtension(BaseExtension):
             '..'))
 
         self.python_index = config.get('python_index')
-        doc_tool.doc_tree.page_parser.register_well_known_name('python-api',
+        doc_repo.doc_tree.page_parser.register_well_known_name('python-api',
                 self.python_index_handler)
-        self._formatters['html'] = PythonHtmlFormatter(
-            self, doc_tool.doc_database)
+        self.formatters['html'] = PythonHtmlFormatter(
+            self, doc_repo.doc_database)
 
     def setup(self):
         stale, unlisted = self.get_stale_files(self.sources)
@@ -322,7 +322,7 @@ class PythonExtension(BaseExtension):
 
         self.stale = stale
 
-        self.scanner = PythonScanner (self.doc_tool, self,
+        self.scanner = PythonScanner (self.doc_repo, self,
                 stale)
 
         if not self.python_index:
@@ -332,7 +332,7 @@ class PythonExtension(BaseExtension):
         if not self.python_index:
             return self.create_naive_index(self.sources)
 
-        index_path = find_md_file(self.python_index, self.doc_tool.include_paths)
+        index_path = find_md_file(self.python_index, self.doc_repo.include_paths)
         return index_path, '', 'python-extension'
 
     @staticmethod
