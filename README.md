@@ -2,11 +2,10 @@ This is a python extension for [hotdoc](https://github.com/hotdoc/hotdoc)
 
 > This is still a work in progress and very limited for now
 
-This extension uses the standard ast module and napoleon,
-which is packaged in sphinx (yeah I know) to generate symbols
+This extension uses the standard ast module and a copy of `napoleon`, to generate symbols
 for python source code.
 
-It also uses the standard ast module.
+It also uses the astroid module.
 
 ### Install instructions:
 
