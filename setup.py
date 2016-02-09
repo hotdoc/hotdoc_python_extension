@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "hotdoc_python_extension",
-    version = "0.6.6.2",
+    version = "0.6.9.1",
     keywords = "python ast sphinx napoleon hotdoc",
     url='https://github.com/hotdoc/hotdoc_python_extension',
     author_email = 'mathieu.duponchelle@opencreed.com',
@@ -16,6 +16,7 @@ setup(
     },
     entry_points = {'hotdoc.extensions': 'get_extension_classes = hotdoc_python_extension.python_extension:get_extension_classes'},
     install_requires = [
+        'docutils==0.12',
         'pypandoc==1.1.3',
     ]
 )
