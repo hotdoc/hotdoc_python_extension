@@ -298,25 +298,19 @@ def source_files_from_config(config, conf_path_resolver):
 
 class PythonExtension(BaseExtension):
     EXTENSION_NAME = 'python-extension'
+    sources = None
+    package_root = None
+    index = None
 
-    def __init__(self, doc_repo, config):
-        BaseExtension.__init__(self, doc_repo, config)
-        self.sources = source_files_from_config(config, doc_repo)
-
-        self.package_root = config.get('python_package_root')
-        if not self.package_root:
-            self.package_root = os.path.commonprefix(self.sources)
-        self.package_root = os.path.abspath(os.path.join(self.package_root,
-            '..'))
-
-        self.python_index = config.get('python_index')
+    def __init__(self, doc_repo):
+        BaseExtension.__init__(self, doc_repo)
         doc_repo.doc_tree.page_parser.register_well_known_name('python-api',
                 self.python_index_handler)
         self.formatters['html'] = PythonHtmlFormatter(
             self, doc_repo.doc_database)
 
     def setup(self):
-        stale, unlisted = self.get_stale_files(self.sources)
+        stale, unlisted = self.get_stale_files(PythonExtension.sources)
         if not stale:
             return
 
@@ -325,14 +319,14 @@ class PythonExtension(BaseExtension):
         self.scanner = PythonScanner (self.doc_repo, self,
                 stale)
 
-        if not self.python_index:
+        if not PythonExtension.index:
             self.update_naive_index()
 
     def python_index_handler (self, doc_tree):
-        if not self.python_index:
-            return self.create_naive_index(self.sources)
+        if not PythonExtension.index:
+            return self.create_naive_index(PythonExtension.sources)
 
-        index_path = find_md_file(self.python_index, self.doc_repo.include_paths)
+        index_path = find_md_file(PythonExtension.index, self.doc_repo.include_paths)
         return index_path, '', 'python-extension'
 
     @staticmethod
@@ -359,8 +353,18 @@ class PythonExtension(BaseExtension):
                 help="Path to the python root markdown file",
                 finalize_function=HotdocWizard.finalize_path)
 
+    @staticmethod
+    def parse_config (doc_repo, config):
+        PythonExtension.sources = source_files_from_config(config, doc_repo)
+        PythonExtension.package_root = config.get('python_package_root')
+        if not PythonExtension.package_root:
+            PythonExtension.package_root = os.path.commonprefix(PythonExtension.sources)
+        PythonExtension.package_root = os.path.abspath(
+            os.path.join(PythonExtension.package_root, '..'))
+        PythonExtension.index = config.get('python_index')
+
     def _get_naive_link_title(self, source_file):
-        relpath = os.path.relpath(source_file, self.package_root)
+        relpath = os.path.relpath(source_file, PythonExtension.package_root)
         modname = os.path.splitext(relpath)[0].replace('/', '.')
         return modname
 
