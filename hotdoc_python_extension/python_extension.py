@@ -44,38 +44,39 @@ class PythonScanner(object):
     def __create_fundamentals(self):
         string_link = \
                 Link('https://docs.python.org/2.7/library/functions.html#str',
-                    'str', None)
+                    'str', 'str')
         boolean_link = \
                 Link('https://docs.python.org/2.7/library/functions.html#bool',
-                        'bool', None)
+                        'bool', 'bool')
         true_link = \
                 Link('https://docs.python.org/2/library/constants.html#True',
-                    'True', None)
+                    'True', 'True')
         false_link = \
                Link('https://docs.python.org/2/library/constants.html#False',
-                    'False', None)
+                    'False', 'False')
         integer_link = \
                 Link('https://docs.python.org/2/library/functions.html#int',
-                        'int', None)
+                        'int', 'int')
         float_link = \
                 Link('https://docs.python.org/2/library/functions.html#float',
-                        'float', None)
+                        'float', 'float')
         none_link = \
                 Link('https://docs.python.org/2/library/constants.html#None',
-                        'None', None)
+                        'None', 'None')
         unicode_link = \
                 Link('https://docs.python.org/2/library/functions.html#unicode',
-                        'unicode', None)
+                        'unicode', 'unicode')
         dict_link = \
                 Link('https://docs.python.org/2/tutorial/datastructures.html#dictionaries',
-                        'dict', None)
+                        'dict', 'dict')
 
         callable_link = \
                 Link('https://docs.python.org/2/library/functions.html#callable',
-                        'callable', None)
+                        'callable', 'callable')
 
         fundamentals = {
                 "none": none_link,
+                "None": none_link,
                 "boolean": boolean_link,
                 "bool": boolean_link,
                 "int": integer_link,
