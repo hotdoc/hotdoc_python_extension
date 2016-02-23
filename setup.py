@@ -18,5 +18,6 @@ setup(
     install_requires = [
         'docutils==0.12',
         'pypandoc==1.1.3',
+        'jedi==0.9.0',
     ]
 )

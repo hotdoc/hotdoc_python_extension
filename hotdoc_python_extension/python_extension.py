@@ -1,6 +1,9 @@
-import os, glob
-import astroid as ast
+import os, glob, io
+
 import pypandoc
+import jedi
+from jedi.evaluate.helpers import get_module_names
+
 from hotdoc.core.base_extension import BaseExtension
 from hotdoc.core.file_includer import find_md_file
 from hotdoc.core.symbols import *
@@ -12,6 +15,17 @@ from hotdoc.core.comment_block import comment_from_tag
 from .python_doc_parser import google_doc_to_native
 from .python_html_formatter import PythonHtmlFormatter
 
+
+def get_definitions(script):
+    def def_ref_filter(_def):
+        is_def = _def.is_definition()
+        return is_def
+
+    defs = [jedi.api.classes.Definition(script._evaluator, name_part)
+            for name_part in get_module_names(script._parser.module(), False)]
+    return sorted(filter(def_ref_filter, defs), key=lambda x: (x.line,
+        x.column))
+
 class PythonScanner(object):
     def __init__(self, doc_repo, extension, sources):
         self.doc_repo = doc_repo
@@ -20,26 +34,14 @@ class PythonScanner(object):
 
         self.fundamentals = self.__create_fundamentals()
 
-        self.__node_parsers = {
-                    ast.ClassDef: self.__parse_class,
-                    ast.FunctionDef: self.__parse_function,
-                }
-
         self.__extension = extension
         self.mod_comments = {}
 
-        for source in sources:
-            relpath = os.path.relpath(source, self.__extension.package_root)
-            # FIXME: ahem
-            modname = os.path.splitext(relpath)[0].replace('/', '.')
-            self.__current_filename = source
-            builder = ast.builder.AstroidBuilder()
-            tree = builder.file_build(source)
-            modcomment, attribute_comments = google_doc_to_native(tree.doc)
-            if modcomment:
-                self.mod_comments[modname] = modcomment
+        self.__seen_attrs = set()
 
-            self.__parse_module (tree.body, modname)
+        for source in sources:
+            self.__current_filename = source
+            self.__parse_module (source)
 
     def __create_fundamentals(self):
         string_link = \
@@ -96,38 +98,37 @@ class PythonScanner(object):
 
         return fundamentals
 
-    def __parse_module (self, body, modname):
-        for node in body:
-            f = self.__node_parsers.get(type(node))
-            if f:
-                f (node, modname)
+    def __parse_module(self, source):
+        relpath = os.path.relpath(source, self.__extension.package_root)
+        # FIXME: ahem
+        modname = os.path.splitext(relpath)[0].replace('/', '.')
+        with io.open(source, 'r', encoding='utf-8') as _:
+            source = _.read()
+        script = jedi.Script(source, line=1, column=0)
+        mod = script._parser.module()
+        modcomment, attribute_comments = google_doc_to_native(mod.raw_doc)
+        if modcomment:
+            self.mod_comments[modname] = modcomment
+        defs = get_definitions(script)
+        for definition in defs:
+            if definition.type == 'class':
+                self.__parse_class(definition, modname)
+            elif definition.type == 'function':
+                self.__parse_function(definition, {}, modname)
 
-    def __parse_class (self, klass, parent_name):
+    def __parse_class(self, definition, parent_name):
         self.class_nesting += 1
-        klass_name = '.'.join((parent_name, klass.name))
-        comment, attr_comments = google_doc_to_native(klass.doc)
-
+        klass_name = '.'.join((parent_name, str(definition.name)))
+        comment, attr_comments = google_doc_to_native(definition.raw_doc)
         if comment:
             comment.filename = self.__current_filename
-
-        for method in sorted(klass.mymethods(), key=lambda x: x.name):
-            self.__parse_function(method, klass_name, is_method=True)
-
-        for method in klass.methods():
-            if method.name == '__init__' and method.parent.parent.name != \
-                    '__builtin__':
-                self.__parse_function(method, klass_name, is_method=True,
-                        is_ctor_for=klass_name)
-
-        for attr_name, attr in sorted(klass.instance_attrs.items()):
-            attr_comment = attr_comments.get(attr_name)
-            self.__parse_attribute(klass_name, attr_comment, attr_name, attr)
-
+        for subdef in definition.defined_names():
+            if subdef.type == 'function':
+                self.__parse_function(subdef, attr_comments, klass_name)
         class_symbol = self.__extension.get_or_create_symbol(ClassSymbol,
                 comment=comment,
                 filename=self.__current_filename,
                 display_name=klass_name)
-
         self.class_nesting -= 1
 
     def __type_tokens_from_comment(self, comment):
@@ -146,17 +147,35 @@ class PythonScanner(object):
 
         return [link]
 
-    def __parse_attribute(self, parent_name, attr_comment, attr_name, attr):
-        if attr_name.startswith('__'):
-            return
+    def __parse_attribute(self, definition, attr_comments, parent_name):
+        for subdef in definition._definition.children:
+            if subdef.type != 'power':
+                continue
+            if len(subdef.children) != 2:
+                continue
+            if subdef.children[0].value != 'self':
+                continue
+            if subdef.children[1].type != 'trailer':
+                continue
+            attr = subdef.children[1]
+            if len(attr.children) != 2:
+                continue
+            if attr.children[0].type != 'operator' or \
+                    attr.children[0].value != '.':
+                continue
+            attr_name = attr.children[1].value
+            if attr_name.startswith('__'):
+                continue
+            attr_comment = attr_comments.get(str(attr_name))
+            attr_name = '.'.join((parent_name, attr_name))
+            if attr_name in self.__seen_attrs:
+                continue
+            self.__seen_attrs.add(attr_name)
+            type_tokens = self.__type_tokens_from_comment(attr_comment)
 
-        attr_name = '.'.join((parent_name, attr_name))
+            type_ = QualifiedSymbol(type_tokens=type_tokens)
 
-        type_tokens = self.__type_tokens_from_comment(attr_comment)
-
-        type_ = QualifiedSymbol(type_tokens=type_tokens)
-
-        self.__extension.get_or_create_symbol(PropertySymbol,
+            self.__extension.get_or_create_symbol(PropertySymbol,
                 comment=attr_comment,
                 filename=self.__current_filename,
                 display_name=attr_name,
@@ -169,37 +188,52 @@ class PythonScanner(object):
 
         return dict_
 
-    def __parse_function (self, function, parent_name,
-            is_method=False, is_ctor_for=None):
-        if function.name.startswith('__') and not is_ctor_for:
+    def __parse_function(self, definition, klass_attr_comments, parent_name):
+        is_method = self.class_nesting > 0
+        if is_method:
+            try:
+                defs = definition.defined_names()
+            except IndexError: # https://github.com/davidhalter/jedi/issues/697
+                defs = []
+            for subdef in defs:
+                if subdef.type == 'statement':
+                    self.__parse_attribute(subdef, klass_attr_comments,
+                            parent_name)
+
+        name = definition.name
+
+        is_ctor_for = None
+
+        if name == '__init__':
+            is_ctor_for = parent_name
+
+        if is_ctor_for is None and name.startswith('__'):
             return
 
-        if not is_method and not is_ctor_for and function.name.startswith('_'):
+        if not is_method and is_ctor_for is None and name.startswith('_'):
             return
 
-        func_name = '.'.join ((parent_name, function.name))
-
-        if function.doc:
-            comment, attr_comments = google_doc_to_native(function.doc)
+        func_name = str('.'.join((parent_name, name)))
+        if definition.raw_doc:
+            comment, attr_comments = google_doc_to_native(definition.raw_doc)
             comment.filename = self.__current_filename
         else:
             comment = None
 
-        parameters = self.__parse_parameters(function.args, comment)
+        parameters = self.__parse_parameters(definition.params, comment)
         retval = self.__parse_return_value(comment)
-
-        is_method = self.class_nesting > 0
 
         if is_method:
             parameters = parameters[1:]
+
 
         func_symbol = self.__extension.get_or_create_symbol(FunctionSymbol,
                 parameters=parameters,
                 return_value=retval,
                 comment=comment,
                 is_method = is_method,
-                is_ctor_for = is_ctor_for,
                 filename=self.__current_filename,
+                is_ctor_for=is_ctor_for,
                 display_name=func_name)
 
     def __parse_return_value(self, comment):
@@ -225,7 +259,7 @@ class PythonScanner(object):
         else:
             param_comments = {}
 
-        for arg in args.args or []:
+        for arg in args or []:
             param_comment = param_comments.get (arg.name)
             type_tokens = self.__type_tokens_from_comment(param_comment)
 
@@ -235,6 +269,7 @@ class PythonScanner(object):
             parameters.append (param)
 
         return parameters
+
 
 DESCRIPTION=\
 """
