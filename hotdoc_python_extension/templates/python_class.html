@@ -1,10 +1,6 @@
 @require(klass, hierarchy, constructor)
 @extends('base_symbol.html')
 
-@def header():
-@constructor
-@end
-
 @def content():
 \
 @if hierarchy:
@@ -12,6 +8,8 @@
 	@hierarchy
 </div>
 @end
+
+@constructor
 
 @if klass.formatted_doc:
 <div class="class_details">

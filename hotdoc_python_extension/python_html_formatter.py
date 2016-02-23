@@ -37,6 +37,11 @@ class PythonHtmlFormatter(HtmlFormatter):
                                 'is_callable': is_callable,
                                 'is_pointer': is_pointer})
 
+    def _format_function(self, func):
+        if func.is_ctor_for is not None:
+            return None, None
+        return super(PythonHtmlFormatter, self)._format_function(func)
+
     def _format_parameter_symbol (self, parameter):
         if parameter.type_tokens:
             parameter.extension_contents['type-link'] = \
@@ -60,8 +65,8 @@ class PythonHtmlFormatter(HtmlFormatter):
         hierarchy = self._format_hierarchy(klass)
         template = self.engine.get_template('python_class.html')
 
-        self._format_symbols(constructor.get_children_symbols())
-        constructor.formatted_doc = self.format_comment(constructor.comment)
+        link_resolver = self.__extension.doc_repo.link_resolver
+        self.format_symbol(constructor, link_resolver)
         constructor.link.title = klass.display_name
         constructor = self._format_callable(constructor, 'class',
                 klass.link.title)[0]

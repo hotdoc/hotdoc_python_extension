@@ -171,10 +171,10 @@ class PythonScanner(object):
 
     def __parse_function (self, function, parent_name,
             is_method=False, is_ctor_for=None):
-        if function.name.startswith('__'):
+        if function.name.startswith('__') and not is_ctor_for:
             return
 
-        if not is_method and function.name.startswith('_'):
+        if not is_method and not is_ctor_for and function.name.startswith('_'):
             return
 
         func_name = '.'.join ((parent_name, function.name))
