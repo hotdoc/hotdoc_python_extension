@@ -40,3 +40,8 @@ Checkout the code from github, then run:
 ```
 python setup.py develop
 ```
+
+### Licensing
+
+hotdoc's python extension is licensed under the LGPL version 2.1 (or, at your option, any
+later version). See COPYING for more details.
