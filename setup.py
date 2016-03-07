@@ -43,5 +43,6 @@ setup(
         'docutils==0.12',
         'pypandoc==1.1.3',
         'jedi==0.9.0',
+        'six',
     ]
 )
