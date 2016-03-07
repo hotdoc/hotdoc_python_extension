@@ -16,11 +16,16 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this library.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
+
 from setuptools import setup, find_packages
+
+with open(os.path.join('hotdoc_python_extension', 'VERSION.txt'), 'r') as _:
+    VERSION = _.read().strip()
 
 setup(
     name = "hotdoc_python_extension",
-    version = "0.7",
+    version = VERSION,
     keywords = "python jed napoleon hotdoc",
     url='https://github.com/hotdoc/hotdoc_python_extension',
     author_email = 'mathieu.duponchelle@opencreed.com',
@@ -31,6 +36,7 @@ setup(
     packages = find_packages(),
     package_data = {
         '': ['*.html'],
+        'hotdoc_python_extension': ['VERSION.txt'],
     },
     entry_points = {'hotdoc.extensions': 'get_extension_classes = hotdoc_python_extension.python_extension:get_extension_classes'},
     install_requires = [
