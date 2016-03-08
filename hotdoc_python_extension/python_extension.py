@@ -126,7 +126,7 @@ class PythonScanner(object):
         mod = script._parser.module()
         modcomment, attribute_comments = google_doc_to_native(mod.raw_doc)
         if modcomment:
-            self.mod_comments[modname] = modcomment
+            self.mod_comments[self.__current_filename] = modcomment
         defs = get_definitions(script)
         for definition in defs:
             if definition.type == 'class':
@@ -422,13 +422,13 @@ class PythonExtension(BaseExtension):
         modname = os.path.splitext(relpath)[0].replace('/', '.')
         return modname
 
-    def _get_naive_page_description(self, link_title):
-        modcomment = self.scanner.mod_comments.get(link_title)
+    def _get_naive_page_description(self, source_file):
+        modcomment = self.scanner.mod_comments.get(source_file)
         if modcomment is None:
             return ''
 
         if modcomment.description:
-            out = '## %s\n\n' % link_title
+            out = '## %s\n\n' % self._get_naive_link_title(source_file)
             out += pypandoc.convert(modcomment.description, to='md',
                     format='rst')
             return out
