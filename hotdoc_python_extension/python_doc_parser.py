@@ -281,15 +281,11 @@ def ref_role (name, raw_text, text, lineno, inliner,
     if content is None:
         content = []
 
-    text_components = text.split('.')
-
-    rel_distance = len(cur_module_components) - len(text_components) + 1
-
     link = None
 
-    for i in range(rel_distance):
-        l = len(cur_module_components) - i
-        potential_name = '.'.join(cur_module_components[:l] + [text])
+    l = len(cur_module_components)
+    for i in range(l):
+        potential_name = '.'.join(cur_module_components[:l - i] + [text])
         link = link_resolver.get_named_link(potential_name)
         if link:
             break
