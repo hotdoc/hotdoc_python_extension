@@ -25,9 +25,7 @@ from jedi.evaluate.helpers import get_module_names
 from hotdoc.core.base_extension import BaseExtension
 from hotdoc.core.file_includer import find_md_file
 from hotdoc.core.symbols import *
-from hotdoc.core.wizard import HotdocWizard
 from hotdoc.core.doc_tree import Page
-from hotdoc.utils.wizard import QuickStartWizard
 from hotdoc.core.comment_block import comment_from_tag
 
 from .python_doc_parser import google_doc_to_native
@@ -294,67 +292,11 @@ DESCRIPTION=\
 Parse python source files and extract symbols and comments.
 """
 
-PYTHON_SOURCES_PROMPT=\
-"""
-Please pass a list of python source files.
-
-You can pass wildcards here, for example:
-
->>> ['../foo/*.py', '../foo//bar/*.py]
-
-These wildcards will be evaluated each time hotdoc is run.
-
-You will be prompted for source files to ignore afterwards.
-"""
-
-PYTHON_FILTERS_PROMPT=\
-"""
-Please pass a list of python source files to ignore.
-
-You can pass wildcards here, for example:
-
->>> ['../foo/*priv*.py']
-
-These wildcards will be evaluated each time hotdoc is run.
-"""
-
-def validate_filters(wizard, thing):
-    if thing is None:
-        return True
-
-    if not QuickStartWizard.validate_globs_list(wizard, thing):
-        return False
-
-    source_files = resolve_patterns(wizard.config.get('python_sources', []), wizard)
-
-    filters = resolve_patterns(thing, wizard)
-
-    source_files = [item for item in source_files if item not in filters]
-
-    print "The files to be parsed would now be %s" % source_files
-
-    return wizard.ask_confirmation()
-
-def resolve_patterns(source_patterns, conf_path_resolver):
-    source_files = []
-    for item in source_patterns:
-        item = conf_path_resolver.resolve_config_path(item)
-        source_files.extend(glob.glob(item))
-
-    return source_files
-
-def source_files_from_config(config, conf_path_resolver):
-    sources = resolve_patterns(config.get('python_sources') or [], conf_path_resolver)
-    filters = resolve_patterns(config.get('python_source_filters') or [],
-            conf_path_resolver)
-    sources = [item for item in sources if item not in filters]
-    return [os.path.abspath(source) for source in sources]
 
 class PythonExtension(BaseExtension):
     EXTENSION_NAME = 'python-extension'
-    sources = None
+    argument_prefix = 'python'
     package_root = None
-    index = None
 
     def __init__(self, doc_repo):
         BaseExtension.__init__(self, doc_repo)
@@ -387,35 +329,18 @@ class PythonExtension(BaseExtension):
     def add_arguments (parser):
         group = parser.add_argument_group('Python extension',
                 DESCRIPTION)
-        group.add_argument ("--python-sources", action="store", nargs="+",
-                dest="python_sources", help="Python source files to parse",
-                extra_prompt=PYTHON_SOURCES_PROMPT,
-                validate_function=QuickStartWizard.validate_globs_list,
-                finalize_function=HotdocWizard.finalize_paths)
-        group.add_argument ("--python-source-filters", action="store", nargs="+",
-                dest="python_source_filters", help="Python source files to ignore",
-                extra_prompt=PYTHON_FILTERS_PROMPT,
-                validate_function=validate_filters,
-                finalize_function=HotdocWizard.finalize_paths)
-        group.add_argument ("--python-package-root", action="store", nargs="+",
-                dest="python_package_root", help="Path to the root of the"
-                " documented package / application",
-                validate_function=HotdocWizard.validate_folder,
-                finalize_function=HotdocWizard.finalize_path)
-        group.add_argument ("--python-index", action="store",
-                dest="python_index",
-                help="Path to the python root markdown file",
-                finalize_function=HotdocWizard.finalize_path)
+        PythonExtension.add_index_argument(group)
+        PythonExtension.add_sources_argument(group)
+        PythonExtension.add_path_argument(group, 'package-root',
+            help_="Path to the root of the documented package / application")
 
     @staticmethod
     def parse_config (doc_repo, config):
-        PythonExtension.sources = source_files_from_config(config, doc_repo)
-        PythonExtension.package_root = config.get('python_package_root')
+        PythonExtension.parse_standard_config(config)
         if not PythonExtension.package_root:
             PythonExtension.package_root = os.path.commonprefix(PythonExtension.sources)
         PythonExtension.package_root = os.path.abspath(
             os.path.join(PythonExtension.package_root, '..'))
-        PythonExtension.index = config.get('python_index')
 
     def _get_naive_link_title(self, source_file):
         relpath = os.path.relpath(source_file, PythonExtension.package_root)
