@@ -325,6 +325,11 @@ class PythonExtension(BaseExtension):
         index_path = find_md_file(PythonExtension.index, self.doc_repo.include_paths)
         return index_path, '', 'python-extension'
 
+    def get_or_create_symbol(self, *args, **kwargs):
+        kwargs['language'] = 'python'
+        return super(PythonExtension, self).get_or_create_symbol(*args,
+            **kwargs)
+
     @staticmethod
     def add_arguments (parser):
         group = parser.add_argument_group('Python extension',
@@ -341,6 +346,9 @@ class PythonExtension(BaseExtension):
             PythonExtension.package_root = os.path.commonprefix(PythonExtension.sources)
         PythonExtension.package_root = os.path.abspath(
             os.path.join(PythonExtension.package_root, '..'))
+
+    def _get_languages(self):
+        return ['python']
 
     def _get_naive_link_title(self, source_file):
         relpath = os.path.relpath(source_file, PythonExtension.package_root)
