@@ -294,14 +294,12 @@ Parse python source files and extract symbols and comments.
 
 
 class PythonExtension(BaseExtension):
-    EXTENSION_NAME = 'python-extension'
+    extension_name = 'python-extension'
     argument_prefix = 'python'
     package_root = None
 
     def __init__(self, doc_repo):
         BaseExtension.__init__(self, doc_repo)
-        doc_repo.doc_tree.page_parser.register_well_known_name('python-api',
-                self.python_index_handler)
         self.formatters['html'] = PythonHtmlFormatter(
             self, doc_repo.doc_database)
 
@@ -314,16 +312,6 @@ class PythonExtension(BaseExtension):
 
         self.scanner = PythonScanner (self.doc_repo, self,
                 stale)
-
-        if not PythonExtension.index:
-            self.update_naive_index()
-
-    def python_index_handler (self, doc_tree):
-        if not PythonExtension.index:
-            return self.create_naive_index(PythonExtension.sources)
-
-        index_path = find_md_file(PythonExtension.index, self.doc_repo.include_paths)
-        return index_path, '', 'python-extension'
 
     def get_or_create_symbol(self, *args, **kwargs):
         kwargs['language'] = 'python'
