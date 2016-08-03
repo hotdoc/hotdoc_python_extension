@@ -89,8 +89,6 @@ class PythonHtmlFormatter(HtmlFormatter):
         constructor = self._format_callable(constructor, 'class',
                 klass.link.title)[0]
         return (template.render({'symbol': klass,
-                                 "editing_link":
-                                 self._format_editing_link(klass),
                                  'klass': klass,
                                  'constructor': constructor,
                                  'hierarchy': hierarchy}),
