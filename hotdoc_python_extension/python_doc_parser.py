@@ -20,6 +20,7 @@ import re
 import sys
 
 from docutils.core import publish_parts
+from docutils.utils import error_reporting
 from docutils import nodes
 from hotdoc.core.comment_block import Comment
 from docutils.statemachine import ViewList
@@ -318,6 +319,10 @@ roles.register_local_role('ctype', ref_role)
 roles.register_local_role('ref', ref_role)
 
 
+def dummy_write(instance, data):
+    pass
+
+
 class MyRestParser(object):
     def __init__(self, extension):
         self.extension = extension
@@ -328,7 +333,10 @@ class MyRestParser(object):
             return text
 
         text = unescape(text)
+        original_write = error_reporting.ErrorOutput.write
+        error_reporting.ErrorOutput.write = dummy_write
         parts = publish_parts(text, writer=self.writer,
                 settings_overrides={'link_resolver': link_resolver,
                     'cur_module': cur_module})
+        error_reporting.ErrorOutput.write = original_write
         return parts['fragment']
