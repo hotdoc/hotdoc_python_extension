@@ -19,10 +19,13 @@
 import re
 import sys
 
+from docutils.utils import Reporter
 from docutils.core import publish_parts
 from docutils.utils import error_reporting
 from docutils import nodes
 from hotdoc.core.comment_block import Comment
+from hotdoc.core.exceptions import HotdocSourceException
+from hotdoc.utils.loggable import Logger, warn
 from docutils.statemachine import ViewList
 from docutils.writers.html4css1 import Writer as HtmlWriter
 from docutils.parsers.rst import roles, directives
@@ -30,6 +33,10 @@ from xml.sax.saxutils import unescape
 
 from hotdoc_python_extension.napoleon import Config
 from hotdoc_python_extension.napoleon import docstring
+
+
+Logger.register_warning_code('python-doc-issue', HotdocSourceException)
+
 
 _google_typed_arg_regex = re.compile(r'\s*(.+?)\s*\(\s*(.+?)\s*\)')
 
@@ -319,8 +326,6 @@ roles.register_local_role('ctype', ref_role)
 roles.register_local_role('ref', ref_role)
 
 
-def dummy_write(instance, data):
-    pass
 
 
 class MyRestParser(object):
@@ -328,15 +333,26 @@ class MyRestParser(object):
         self.extension = extension
         self.writer = HotdocRestHtmlWriter()
 
-    def translate(self, text, link_resolver, output_format, cur_module):
-        if output_format != 'html':
-            return text
+    def translate_comment(self, comment, link_resolver, output_format, cur_module):
+        assert(output_format == 'html')
 
-        text = unescape(text)
-        original_write = error_reporting.ErrorOutput.write
-        error_reporting.ErrorOutput.write = dummy_write
+        def __dummy_system_message(instance, level, message, *children, **kwargs):
+            if comment.lineno != -1 and 'line' in kwargs:
+                lineno = comment.lineno + kwargs.get('line')
+            else:
+                lineno = -1
+
+            warn(
+                'python-doc-issue',
+                message=message,
+                filename=comment.filename,
+                lineno=lineno)
+
+        text = unescape(comment.description)
+        original_system_message = Reporter.system_message
+        Reporter.system_message = __dummy_system_message
         parts = publish_parts(text, writer=self.writer,
                 settings_overrides={'link_resolver': link_resolver,
                     'cur_module': cur_module})
-        error_reporting.ErrorOutput.write = original_write
+        Reporter.system_message = original_system_message
         return parts['fragment']

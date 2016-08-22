@@ -66,13 +66,9 @@ class PythonHtmlFormatter(HtmlFormatter):
                     self._format_type_tokens(parameter.type_tokens)
         return HtmlFormatter._format_parameter_symbol(self, parameter)
 
-    def _format_docstring(self, docstring, link_resolver, to_native):
-        if to_native:                                                                                    
-            format_ = 'markdown'
-        else:
-            format_ = 'html'
-        return self.__docstring_formatter.translate(
-            docstring, link_resolver, format_, self.__current_package_name)
+    def _format_comment(self, comment, link_resolver):
+        return self.__docstring_formatter.translate_comment(
+            comment, link_resolver, 'html', self.__current_package_name)
 
     def _format_class_symbol(self, klass):
         constructor = self.__doc_database.get_session().query(FunctionSymbol).filter(

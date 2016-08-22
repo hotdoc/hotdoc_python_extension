@@ -26,7 +26,6 @@ from hotdoc.core.base_extension import BaseExtension
 from hotdoc.core.file_includer import find_md_file
 from hotdoc.core.symbols import *
 from hotdoc.core.doc_tree import Page
-from hotdoc.core.comment_block import comment_from_tag
 
 from .python_doc_parser import google_doc_to_native
 from .python_html_formatter import PythonHtmlFormatter
@@ -137,6 +136,7 @@ class PythonScanner(object):
         klass_name = '.'.join((parent_name, str(definition.name)))
         comment, attr_comments = google_doc_to_native(definition.raw_doc)
         if comment:
+            comment.lineno = definition.line + 1
             comment.filename = self.__current_filename
         for subdef in definition.defined_names():
             if subdef.type == 'function':
@@ -232,6 +232,7 @@ class PythonScanner(object):
         func_name = str('.'.join((parent_name, name)))
         if definition.raw_doc:
             comment, attr_comments = google_doc_to_native(definition.raw_doc)
+            comment.lineno = definition.line + 1
             comment.filename = self.__current_filename
         else:
             comment = None
