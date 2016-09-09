@@ -336,8 +336,8 @@ class PythonExtension(BaseExtension):
         PythonExtension.package_root = os.path.abspath(
             os.path.join(PythonExtension.package_root, '..'))
 
-    def _get_languages(self):
-        return ['python']
+    def _get_smart_index_title(self):
+        return 'Python API Reference'
 
     def _get_naive_link_title(self, source_file):
         relpath = os.path.relpath(source_file, PythonExtension.package_root)
