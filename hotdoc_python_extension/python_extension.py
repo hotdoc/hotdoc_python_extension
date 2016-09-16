@@ -122,8 +122,15 @@ class PythonScanner(object):
         script = jedi.Script(source, line=1, column=0)
         mod = script._parser.module()
         modcomment, attribute_comments = google_doc_to_native(mod.raw_doc)
+
         if modcomment:
-            self.mod_comments[self.__current_filename] = modcomment
+            if modcomment.description:
+                out = pypandoc.convert(modcomment.description, to='md',
+                                        format='rst')
+                modcomment.description = out
+                modcomment.name = relpath
+                self.doc_repo.doc_database.add_comment(modcomment)
+
         defs = get_definitions(script)
         for definition in defs:
             if definition.type == 'class':
@@ -138,11 +145,18 @@ class PythonScanner(object):
         if comment:
             comment.lineno = definition.line + 1
             comment.filename = self.__current_filename
-        for subdef in definition.defined_names():
-            if subdef.type == 'function':
-                self.__parse_function(subdef, attr_comments, klass_name)
+            comment.name = klass_name
+
+        try:
+            subdefs = definition.defined_names()
+            for subdef in subdefs:
+                if subdef.type == 'function':
+                    self.__parse_function(subdef, attr_comments, klass_name)
+        except IndexError:
+            pass
+
+        self.doc_repo.doc_database.add_comment(comment)
         class_symbol = self.__extension.get_or_create_symbol(ClassSymbol,
-                comment=comment,
                 filename=self.__current_filename,
                 display_name=klass_name)
         self.class_nesting -= 1
@@ -191,8 +205,11 @@ class PythonScanner(object):
 
             type_ = QualifiedSymbol(type_tokens=type_tokens)
 
+            if attr_comment:
+                attr_comment.name = attr_name
+                self.doc_repo.doc_database.add_comment(attr_comment)
+
             self.__extension.get_or_create_symbol(PropertySymbol,
-                comment=attr_comment,
                 filename=self.__current_filename,
                 display_name=attr_name,
                 prop_type=type_)
@@ -234,6 +251,7 @@ class PythonScanner(object):
             comment, attr_comments = google_doc_to_native(definition.raw_doc)
             comment.lineno = definition.line + 1
             comment.filename = self.__current_filename
+            comment.name = func_name
         else:
             comment = None
 
@@ -243,11 +261,11 @@ class PythonScanner(object):
         if is_method:
             parameters = parameters[1:]
 
+        self.doc_repo.doc_database.add_comment(comment)
 
         func_symbol = self.__extension.get_or_create_symbol(FunctionSymbol,
                 parameters=parameters,
                 return_value=retval,
-                comment=comment,
                 is_method = is_method,
                 filename=self.__current_filename,
                 is_ctor_for=is_ctor_for,
@@ -262,8 +280,7 @@ class PythonScanner(object):
             return_value = []
             for ret_comment in ret_comments:
                 type_tokens = self.__type_tokens_from_comment(ret_comment)
-                return_value.append(ReturnItemSymbol(type_tokens=type_tokens,
-                        comment=ret_comment))
+                return_value.append(ReturnItemSymbol(type_tokens=type_tokens))
             return return_value or [None]
         except KeyError:
             return [None]
@@ -281,8 +298,7 @@ class PythonScanner(object):
             type_tokens = self.__type_tokens_from_comment(param_comment)
 
             param = ParameterSymbol (argname=arg.name,
-                    type_tokens=type_tokens,
-                    comment=param_comment)
+                    type_tokens=type_tokens)
             parameters.append (param)
 
         return parameters
@@ -345,15 +361,6 @@ class PythonExtension(BaseExtension):
         return modname
 
     def _get_naive_page_description(self, source_file):
-        modcomment = self.scanner.mod_comments.get(source_file)
-        if modcomment is None:
-            return ''
-
-        if modcomment.description:
-            out = '## %s\n\n' % self._get_naive_link_title(source_file)
-            out += pypandoc.convert(modcomment.description, to='md',
-                    format='rst')
-            return out
 
         return BaseExtension._get_naive_page_description(self, link_title)
 
