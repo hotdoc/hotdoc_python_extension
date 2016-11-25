@@ -650,7 +650,7 @@ class GoogleDocstring(object):
             if start == -1:
                 lines = []
             end = -1
-            for i in reversed(range(len(lines))):
+            for i in reversed(list(range(len(lines)))):
                 line = lines[i]
                 if line:
                     end = i
