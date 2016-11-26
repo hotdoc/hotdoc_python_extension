@@ -23,11 +23,11 @@ from hotdoc.core.symbols import FunctionSymbol, Symbol
 from .python_doc_parser import MyRestParser
 
 class PythonFormatter(Formatter):
-    def __init__(self, extension, doc_database):
+    def __init__(self, extension, database):
         module_path = os.path.dirname(__file__)
         searchpath = [os.path.join(module_path, "templates")]
         self.__extension = extension
-        self.__doc_database = doc_database
+        self.__database = database
         Formatter.__init__(self, searchpath)
         self.__docstring_formatter = MyRestParser(extension)
         self.__current_module_name = None
@@ -71,7 +71,7 @@ class PythonFormatter(Formatter):
             comment, link_resolver, 'html', self.__current_package_name)
 
     def _format_class_symbol(self, klass):
-        constructor = self.__doc_database.get_session().query(FunctionSymbol).filter(
+        constructor = self.__database.get_session().query(FunctionSymbol).filter(
                 FunctionSymbol.is_ctor_for==klass.unique_name).first()
         if constructor is None:
             return Formatter._format_class_symbol(self, klass)

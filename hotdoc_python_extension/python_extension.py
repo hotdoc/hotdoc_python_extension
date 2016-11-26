@@ -129,7 +129,7 @@ class PythonScanner(object):
                                         format='rst')
                 modcomment.description = out
                 modcomment.name = relpath
-                self.doc_repo.doc_database.add_comment(modcomment)
+                self.doc_repo.database.add_comment(modcomment)
 
         defs = get_definitions(script)
         for definition in defs:
@@ -155,7 +155,7 @@ class PythonScanner(object):
         except IndexError:
             pass
 
-        self.doc_repo.doc_database.add_comment(comment)
+        self.doc_repo.database.add_comment(comment)
         class_symbol = self.__extension.get_or_create_symbol(ClassSymbol,
                 filename=self.__current_filename,
                 display_name=klass_name)
@@ -207,7 +207,7 @@ class PythonScanner(object):
 
             if attr_comment:
                 attr_comment.name = attr_name
-                self.doc_repo.doc_database.add_comment(attr_comment)
+                self.doc_repo.database.add_comment(attr_comment)
 
             self.__extension.get_or_create_symbol(PropertySymbol,
                 filename=self.__current_filename,
@@ -261,7 +261,7 @@ class PythonScanner(object):
         if is_method:
             parameters = parameters[1:]
 
-        self.doc_repo.doc_database.add_comment(comment)
+        self.doc_repo.database.add_comment(comment)
 
         func_symbol = self.__extension.get_or_create_symbol(FunctionSymbol,
                 parameters=parameters,
@@ -318,7 +318,7 @@ class PythonExtension(Extension):
     def __init__(self, doc_repo):
         Extension.__init__(self, doc_repo)
         self.formatters['html'] = PythonFormatter(
-            self, doc_repo.doc_database)
+            self, doc_repo.database)
 
     def setup(self):
         stale, unlisted = self.get_stale_files(PythonExtension.sources)
