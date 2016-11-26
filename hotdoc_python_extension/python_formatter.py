@@ -79,7 +79,7 @@ class PythonFormatter(Formatter):
         hierarchy = self._format_hierarchy(klass)
         template = self.engine.get_template('python_class.html')
 
-        link_resolver = self.__extension.doc_repo.link_resolver
+        link_resolver = self.__extension.project.link_resolver
         self.format_symbol(constructor, link_resolver)
         constructor.link.title = klass.display_name
         constructor = self._format_callable(constructor, 'class',

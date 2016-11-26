@@ -42,8 +42,8 @@ def get_definitions(script):
         x.column))
 
 class PythonScanner(object):
-    def __init__(self, doc_repo, extension, sources):
-        self.doc_repo = doc_repo
+    def __init__(self, project, extension, sources):
+        self.project = project
 
         self.class_nesting = 0
 
@@ -129,7 +129,7 @@ class PythonScanner(object):
                                         format='rst')
                 modcomment.description = out
                 modcomment.name = relpath
-                self.doc_repo.database.add_comment(modcomment)
+                self.project.database.add_comment(modcomment)
 
         defs = get_definitions(script)
         for definition in defs:
@@ -155,7 +155,7 @@ class PythonScanner(object):
         except IndexError:
             pass
 
-        self.doc_repo.database.add_comment(comment)
+        self.project.database.add_comment(comment)
         class_symbol = self.__extension.get_or_create_symbol(ClassSymbol,
                 filename=self.__current_filename,
                 display_name=klass_name)
@@ -207,7 +207,7 @@ class PythonScanner(object):
 
             if attr_comment:
                 attr_comment.name = attr_name
-                self.doc_repo.database.add_comment(attr_comment)
+                self.project.database.add_comment(attr_comment)
 
             self.__extension.get_or_create_symbol(PropertySymbol,
                 filename=self.__current_filename,
@@ -261,7 +261,7 @@ class PythonScanner(object):
         if is_method:
             parameters = parameters[1:]
 
-        self.doc_repo.database.add_comment(comment)
+        self.project.database.add_comment(comment)
 
         func_symbol = self.__extension.get_or_create_symbol(FunctionSymbol,
                 parameters=parameters,
@@ -315,10 +315,10 @@ class PythonExtension(Extension):
     argument_prefix = 'python'
     package_root = None
 
-    def __init__(self, doc_repo):
-        Extension.__init__(self, doc_repo)
+    def __init__(self, project):
+        Extension.__init__(self, project)
         self.formatters['html'] = PythonFormatter(
-            self, doc_repo.database)
+            self, project.database)
 
     def setup(self):
         stale, unlisted = self.get_stale_files(PythonExtension.sources)
@@ -327,7 +327,7 @@ class PythonExtension(Extension):
 
         self.stale = stale
 
-        self.scanner = PythonScanner (self.doc_repo, self,
+        self.scanner = PythonScanner (self.project, self,
                 stale)
 
     def get_or_create_symbol(self, *args, **kwargs):
@@ -345,7 +345,7 @@ class PythonExtension(Extension):
             help_="Path to the root of the documented package / application")
 
     @staticmethod
-    def parse_config (doc_repo, config):
+    def parse_config (project, config):
         PythonExtension.parse_standard_config(config)
         if not PythonExtension.package_root:
             PythonExtension.package_root = os.path.commonprefix(PythonExtension.sources)
