@@ -22,7 +22,7 @@ import pypandoc
 import jedi
 from jedi.evaluate.helpers import get_module_names
 
-from hotdoc.core.base_extension import BaseExtension
+from hotdoc.core.extension import Extension
 from hotdoc.core.file_includer import find_md_file
 from hotdoc.core.symbols import *
 from hotdoc.core.doc_tree import Page
@@ -310,13 +310,13 @@ Parse python source files and extract symbols and comments.
 """
 
 
-class PythonExtension(BaseExtension):
+class PythonExtension(Extension):
     extension_name = 'python-extension'
     argument_prefix = 'python'
     package_root = None
 
     def __init__(self, doc_repo):
-        BaseExtension.__init__(self, doc_repo)
+        Extension.__init__(self, doc_repo)
         self.formatters['html'] = PythonFormatter(
             self, doc_repo.doc_database)
 
@@ -362,7 +362,7 @@ class PythonExtension(BaseExtension):
 
     def _get_naive_page_description(self, source_file):
 
-        return BaseExtension._get_naive_page_description(self, link_title)
+        return Extension._get_naive_page_description(self, link_title)
 
 def get_extension_classes():
     return [PythonExtension]
