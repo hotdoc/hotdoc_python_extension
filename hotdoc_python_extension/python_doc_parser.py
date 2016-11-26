@@ -23,7 +23,7 @@ from docutils.utils import Reporter
 from docutils.core import publish_parts
 from docutils.utils import error_reporting
 from docutils import nodes
-from hotdoc.core.comment_block import Comment
+from hotdoc.core.comment import Comment
 from hotdoc.core.exceptions import HotdocSourceException
 from hotdoc.utils.loggable import Logger, warn
 from docutils.statemachine import ViewList
