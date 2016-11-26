@@ -25,7 +25,7 @@ from jedi.evaluate.helpers import get_module_names
 from hotdoc.core.extension import Extension
 from hotdoc.core.file_includer import find_md_file
 from hotdoc.core.symbols import *
-from hotdoc.core.doc_tree import Page
+from hotdoc.core.tree import Page
 
 from .python_doc_parser import google_doc_to_native
 from .python_formatter import PythonFormatter
