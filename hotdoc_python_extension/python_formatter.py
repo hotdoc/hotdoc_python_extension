@@ -17,18 +17,18 @@
 # along with this library.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from hotdoc.formatters.html_formatter import HtmlFormatter
+from hotdoc.core.base_formatter import Formatter
 from hotdoc.core.symbols import FunctionSymbol, Symbol
 
 from .python_doc_parser import MyRestParser
 
-class PythonHtmlFormatter(HtmlFormatter):
+class PythonFormatter(Formatter):
     def __init__(self, extension, doc_database):
         module_path = os.path.dirname(__file__)
         searchpath = [os.path.join(module_path, "templates")]
         self.__extension = extension
         self.__doc_database = doc_database
-        HtmlFormatter.__init__(self, searchpath)
+        Formatter.__init__(self, searchpath)
         self.__docstring_formatter = MyRestParser(extension)
         self.__current_module_name = None
         self.__current_package_name = None
@@ -58,13 +58,13 @@ class PythonHtmlFormatter(HtmlFormatter):
     def _format_function(self, func):
         if func.is_ctor_for is not None:
             return None, None
-        return super(PythonHtmlFormatter, self)._format_function(func)
+        return super(PythonFormatter, self)._format_function(func)
 
     def _format_parameter_symbol (self, parameter):
         if parameter.type_tokens:
             parameter.extension_contents['type-link'] = \
                     self._format_type_tokens(parameter.type_tokens)
-        return HtmlFormatter._format_parameter_symbol(self, parameter)
+        return Formatter._format_parameter_symbol(self, parameter)
 
     def _format_comment(self, comment, link_resolver):
         return self.__docstring_formatter.translate_comment(
@@ -74,7 +74,7 @@ class PythonHtmlFormatter(HtmlFormatter):
         constructor = self.__doc_database.get_session().query(FunctionSymbol).filter(
                 FunctionSymbol.is_ctor_for==klass.unique_name).first()
         if constructor is None:
-            return HtmlFormatter._format_class_symbol(self, klass)
+            return Formatter._format_class_symbol(self, klass)
 
         hierarchy = self._format_hierarchy(klass)
         template = self.engine.get_template('python_class.html')
@@ -99,4 +99,4 @@ class PythonHtmlFormatter(HtmlFormatter):
                 modname = os.path.splitext(relpath)[0].replace('/', '.')
                 self.__current_package_name = modname
 
-        return HtmlFormatter.format_symbol(self, symbol, link_resolver)
+        return Formatter.format_symbol(self, symbol, link_resolver)

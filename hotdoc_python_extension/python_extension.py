@@ -28,7 +28,7 @@ from hotdoc.core.symbols import *
 from hotdoc.core.doc_tree import Page
 
 from .python_doc_parser import google_doc_to_native
-from .python_html_formatter import PythonHtmlFormatter
+from .python_formatter import PythonFormatter
 
 
 def get_definitions(script):
@@ -317,7 +317,7 @@ class PythonExtension(BaseExtension):
 
     def __init__(self, doc_repo):
         BaseExtension.__init__(self, doc_repo)
-        self.formatters['html'] = PythonHtmlFormatter(
+        self.formatters['html'] = PythonFormatter(
             self, doc_repo.doc_database)
 
     def setup(self):
