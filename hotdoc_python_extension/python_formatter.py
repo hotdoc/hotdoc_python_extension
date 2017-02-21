@@ -28,10 +28,9 @@ class PythonFormatter(Formatter):
         searchpath = [os.path.join(module_path, "templates")]
         self.__extension = extension
         self.__database = database
-        Formatter.__init__(self, searchpath)
-        self.__docstring_formatter = MyRestParser(extension)
+        Formatter.__init__(self, extension.app.link_resolver, searchpath)
+        self._docstring_formatter = MyRestParser(extension)
         self.__current_module_name = None
-        self.__current_package_name = None
 
     def _format_prototype(self, function, is_pointer, title):
         template = self.engine.get_template('python_prototype.html')
@@ -66,10 +65,6 @@ class PythonFormatter(Formatter):
                     self._format_type_tokens(parameter.type_tokens)
         return Formatter._format_parameter_symbol(self, parameter)
 
-    def _format_comment(self, comment, link_resolver):
-        return self.__docstring_formatter.translate_comment(
-            comment, link_resolver, 'html', self.__current_package_name)
-
     def _format_class_symbol(self, klass):
         constructor = self.__database.get_session().query(FunctionSymbol).filter(
                 FunctionSymbol.is_ctor_for==klass.unique_name).first()
@@ -79,7 +74,7 @@ class PythonFormatter(Formatter):
         hierarchy = self._format_hierarchy(klass)
         template = self.engine.get_template('python_class.html')
 
-        link_resolver = self.__extension.project.link_resolver
+        link_resolver = self.__extension.app.link_resolver
         self.format_symbol(constructor, link_resolver)
         constructor.link.title = klass.display_name
         constructor = self._format_callable(constructor, 'class',
@@ -97,6 +92,6 @@ class PythonFormatter(Formatter):
                 relpath = os.path.relpath(self.__current_module_name,
                         self.__extension.package_root)
                 modname = os.path.splitext(relpath)[0].replace('/', '.')
-                self.__current_package_name = modname
+                self._docstring_formatter.current_package_name = modname
 
         return Formatter.format_symbol(self, symbol, link_resolver)

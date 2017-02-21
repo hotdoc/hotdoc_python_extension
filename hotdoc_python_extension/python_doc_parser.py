@@ -304,7 +304,7 @@ def ref_role (name, raw_text, text, lineno, inliner,
     if link is None:
         node = nodes.emphasis(text, text)
     else:
-        node = nodes.reference(link.title, link.title, refuri=link.get_link(),
+        node = nodes.reference(link.title, link.title, refuri=link.get_link(link_resolver),
                 **options)
 
     return [node], []
@@ -326,16 +326,13 @@ roles.register_local_role('ctype', ref_role)
 roles.register_local_role('ref', ref_role)
 
 
-
-
 class MyRestParser(object):
     def __init__(self, extension):
         self.extension = extension
         self.writer = HotdocRestHtmlWriter()
+        self.current_package_name = None
 
-    def translate_comment(self, comment, link_resolver, output_format, cur_module):
-        assert(output_format == 'html')
-
+    def translate_comment(self, comment, link_resolver):
         def __dummy_system_message(instance, level, message, *children, **kwargs):
             if comment.lineno != -1 and 'line' in kwargs:
                 lineno = comment.lineno + kwargs.get('line')
@@ -353,6 +350,9 @@ class MyRestParser(object):
         Reporter.system_message = __dummy_system_message
         parts = publish_parts(text, writer=self.writer,
                 settings_overrides={'link_resolver': link_resolver,
-                    'cur_module': cur_module})
+                    'cur_module': self.current_package_name})
         Reporter.system_message = original_system_message
         return parts['fragment']
+
+    def parse_config(self, config):
+        pass
