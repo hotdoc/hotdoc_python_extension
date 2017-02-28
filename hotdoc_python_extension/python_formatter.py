@@ -23,12 +23,10 @@ from hotdoc.core.symbols import FunctionSymbol, Symbol
 from .python_doc_parser import MyRestParser
 
 class PythonFormatter(Formatter):
-    def __init__(self, extension, database):
+    def __init__(self, extension):
         module_path = os.path.dirname(__file__)
         searchpath = [os.path.join(module_path, "templates")]
-        self.__extension = extension
-        self.__database = database
-        Formatter.__init__(self, extension.app.link_resolver, searchpath)
+        Formatter.__init__(self, extension, searchpath)
         self._docstring_formatter = MyRestParser(extension)
         self.__current_module_name = None
 
@@ -66,7 +64,7 @@ class PythonFormatter(Formatter):
         return Formatter._format_parameter_symbol(self, parameter)
 
     def _format_class_symbol(self, klass):
-        constructor = self.__database.get_session().query(FunctionSymbol).filter(
+        constructor = self.extension.app.database.get_session().query(FunctionSymbol).filter(
                 FunctionSymbol.is_ctor_for==klass.unique_name).first()
         if constructor is None:
             return Formatter._format_class_symbol(self, klass)
@@ -74,7 +72,7 @@ class PythonFormatter(Formatter):
         hierarchy = self._format_hierarchy(klass)
         template = self.engine.get_template('python_class.html')
 
-        link_resolver = self.__extension.app.link_resolver
+        link_resolver = self.extension.app.link_resolver
         self.format_symbol(constructor, link_resolver)
         constructor.link.title = klass.display_name
         constructor = self._format_callable(constructor, 'class',
@@ -90,7 +88,7 @@ class PythonFormatter(Formatter):
             if self.__current_module_name != symbol.filename:
                 self.__current_module_name = symbol.filename
                 relpath = os.path.relpath(self.__current_module_name,
-                        self.__extension.package_root)
+                        self.extension.package_root)
                 modname = os.path.splitext(relpath)[0].replace('/', '.')
                 self._docstring_formatter.current_package_name = modname
 

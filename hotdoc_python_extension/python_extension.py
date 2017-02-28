@@ -358,7 +358,7 @@ class PythonExtension(Extension):
         return modname
 
     def _make_formatter(self):
-        return PythonFormatter(self, self.app.database)
+        return PythonFormatter(self)
 
 def get_extension_classes():
     return [PythonExtension]
