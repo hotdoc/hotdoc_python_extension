@@ -17,18 +17,36 @@
 # along with this library.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import html
+from wheezy.template.engine import Engine
+from wheezy.template.ext.core import CoreExtension
+from wheezy.template.ext.code import CodeExtension
+from wheezy.template.loader import FileLoader
 from hotdoc.core.formatter import Formatter
 from hotdoc.core.symbols import FunctionSymbol, Symbol
 
 from .python_doc_parser import MyRestParser
 
 class PythonFormatter(Formatter):
+    engine = None
+
     def __init__(self, extension):
-        module_path = os.path.dirname(__file__)
-        searchpath = [os.path.join(module_path, "templates")]
-        Formatter.__init__(self, extension, searchpath)
+        Formatter.__init__(self, extension)
         self._docstring_formatter = MyRestParser(extension)
         self.__current_module_name = None
+
+    def get_template(self, name):
+        return PythonFormatter.engine.get_template(name)
+
+    def parse_toplevel_config(self, config):
+        super().parse_toplevel_config(config)
+        if PythonFormatter.engine is None:
+            module_path = os.path.dirname(__file__)
+            searchpath = [os.path.join(module_path, "templates")] + Formatter.engine.loader.searchpath
+            PythonFormatter.engine = Engine(
+                    loader=FileLoader(searchpath, encoding='UTF-8'),
+                    extensions=[CoreExtension(), CodeExtension()])
+            PythonFormatter.engine.global_vars.update({'e': html.escape})
 
     def _format_prototype(self, function, is_pointer, title):
         template = self.engine.get_template('python_prototype.html')
